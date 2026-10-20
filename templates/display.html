@@ -5,13 +5,18 @@
     <title>Alarmmonitor</title>
     <style>
         body { background: #111; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; }
-        .idle { text-align: center; margin-top: 22vh; color: #333; font-size: 4.5em; font-weight: bold; letter-spacing: 2px; }
+        .idle-container { text-align: center; margin-top: 15vh; color: #444; }
+        .idle-title { font-size: 3.5em; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; color: #2ecc71; }
+        .idle-clock { font-size: 6em; font-weight: bold; color: #888; font-family: monospace; }
+        
         .alarm-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
         .alarm-card { border: 4px solid #e74c3c; padding: 20px; background: #1a1a1a; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; }
         .stichwort { background: #c0392b; color: #fff; font-size: 2.6em; padding: 15px; text-align: center; font-weight: bold; border-radius: 8px; }
         .details { font-size: 1.7em; margin-top: 15px; line-height: 1.5; flex-grow: 1; }
         .label { color: #f39c12; font-weight: bold; display: inline-block; width: 140px; }
         .timer-box { margin-top: 15px; font-size: 1.3em; color: #2ecc71; text-align: right; border-top: 1px solid #333; padding-top: 10px; }
+
+        .offline-banner { display: none; position: fixed; top: 0; left: 0; right: 0; background: #e67e22; color: #fff; text-align: center; padding: 10px; font-weight: bold; font-size: 1.2em; z-index: 9999; }
 
         @keyframes flash {
             0% { border-color: #e74c3c; }
@@ -23,7 +28,13 @@
 </head>
 <body>
 
-<div id="idle" class="idle">EINSATZBEREIT</div>
+<div id="offlineBanner" class="offline-banner">VERBINDUNG ZUM SERVER UNTERBROCHEN</div>
+
+<div id="idle" class="idle-container">
+    <div class="idle-title">EINSATZBEREIT</div>
+    <div id="clock" class="idle-clock">00:00:00</div>
+</div>
+
 <div id="grid" class="alarm-grid"></div>
 
 <audio id="gong" src="/static/gong.mp3" preload="auto"></audio>
@@ -31,10 +42,34 @@
 <script>
     let knownAlarmIds = new Set();
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function updateClock() {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('clock').innerText = `${hrs}:${mins}:${secs}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
     async function poll() {
         try {
             const res = await fetch('/api/alarm');
+            if (!res.ok) throw new Error("HTTP Fehler");
+            
             const alarms = await res.json();
+            document.getElementById('offlineBanner').style.display = 'none';
+
             const idleEl = document.getElementById('idle');
             const gridEl = document.getElementById('grid');
 
@@ -69,20 +104,22 @@
 
                 return `
                     <div class="alarm-card ${isNew ? 'flashing' : ''}">
-                        <div class="stichwort">${a.stichwort}</div>
+                        <div class="stichwort">${escapeHtml(a.stichwort)}</div>
                         <div class="details">
-                            <p><span class="label">Ort:</span> ${a.adresse}</p>
-                            <p><span class="label">Einheiten:</span> ${a.fahrzeuge}</p>
-                            <p><span class="label">Hinweis:</span> ${a.hinweis || '-'}</p>
+                            <p><span class="label">Ort:</span> ${escapeHtml(a.adresse)}</p>
+                            <p><span class="label">Einheiten:</span> ${escapeHtml(a.fahrzeuge)}</p>
+                            <p><span class="label">Hinweis:</span> ${escapeHtml(a.hinweis) || '-'}</p>
                         </div>
                         <div class="timer-box">
-                            Alarmzeit: ${a.timestr} | Laufzeit: ${mins}:${secs}
+                            Alarmzeit: ${escapeHtml(a.timestr)} | Laufzeit: ${mins}:${secs}
                         </div>
                     </div>
                 `;
             }).join('');
 
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            document.getElementById('offlineBanner').style.display = 'block';
+        }
     }
 
     setInterval(poll, 1000);

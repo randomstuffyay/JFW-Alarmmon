@@ -12,7 +12,9 @@
         .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
         .btn-preset { background: #34495e; font-size: 13px; padding: 10px; }
         .btn-stop { background: #27ae60; font-size: 13px; padding: 8px; margin-top: 5px; }
+        .btn-clear { background: #c0392b; font-size: 12px; padding: 6px; margin-top: 10px; }
         .active-item { background: #fff3f3; border-left: 4px solid #e74c3c; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        ul { padding-left: 20px; margin: 0; font-size: 14px; color: #555; }
     </style>
 </head>
 <body>
@@ -42,7 +44,23 @@
     <button onclick="sendAlarm()">EINSATZ ALARMIEREN</button>
 </div>
 
+<div class="section">
+    <h2>Einsatzprotokoll (Tag)</h2>
+    <ul id="history"></ul>
+    <button class="btn-clear" onclick="clearHistory()">Tagesprotokoll zurücksetzen</button>
+</div>
+
 <script>
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function applyPreset(p) {
         document.getElementById('stichwort').value = p.stichwort;
         document.getElementById('adresse').value = p.adresse;
@@ -63,6 +81,7 @@
             body: JSON.stringify(payload)
         });
         loadActive();
+        loadHistory();
     }
 
     async function stopAlarm(id) {
@@ -80,26 +99,49 @@
     }
 
     async function loadActive() {
-        const res = await fetch('/api/alarm');
-        const alarms = await res.json();
-        const listEl = document.getElementById('activeList');
+        try {
+            const res = await fetch('/api/alarm');
+            const alarms = await res.json();
+            const listEl = document.getElementById('activeList');
 
-        if (!alarms || alarms.length === 0) {
-            listEl.innerHTML = '<i>Keine aktiven Einsätze</i>';
-            return;
+            if (!alarms || alarms.length === 0) {
+                listEl.innerHTML = '<i>Keine aktiven Einsätze</i>';
+                return;
+            }
+
+            listEl.innerHTML = alarms.map(a => `
+                <div class="active-item">
+                    <b>${escapeHtml(a.stichwort)}</b> (${escapeHtml(a.timestr)})<br>
+                    ${escapeHtml(a.adresse)} | ${escapeHtml(a.fahrzeuge)}
+                    <button class="btn-stop" onclick="stopAlarm(${a.id})">Diesen Einsatz beenden</button>
+                </div>
+            `).join('');
+        } catch(e) {}
+    }
+
+    async function loadHistory() {
+        try {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            const list = document.getElementById('history');
+            if (!data || data.length === 0) {
+                list.innerHTML = '<li><i>Keine Einsätze bisher</i></li>';
+                return;
+            }
+            list.innerHTML = data.map(h => `<li><b>${escapeHtml(h.timestr)}:</b> ${escapeHtml(h.stichwort)} - ${escapeHtml(h.adresse)}</li>`).join('');
+        } catch(e) {}
+    }
+
+    async function clearHistory() {
+        if (confirm("Möchtest du das gesamte Tagesprotokoll wirklich löschen?")) {
+            await fetch('/api/history', { method: 'DELETE' });
+            loadHistory();
         }
-
-        listEl.innerHTML = alarms.map(a => `
-            <div class="active-item">
-                <b>${a.stichwort}</b> (${a.timestr})<br>
-                ${a.adresse} | ${a.fahrzeuge}
-                <button class="btn-stop" onclick="stopAlarm(${a.id})">Diesen Einsatz beenden</button>
-            </div>
-        `).join('');
     }
 
     setInterval(loadActive, 3000);
     loadActive();
+    loadHistory();
 </script>
 </body>
 </html>
