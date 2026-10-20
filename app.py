@@ -9,14 +9,20 @@ app = Flask(__name__)
 
 AUTO_RESET_MINUTES = 30
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'alarms.json')
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
+
 file_lock = threading.Lock()
 
-PRESETS = [
-    {"name": "B1 - Containerbrand", "stichwort": "B1 - Containerbrand", "adresse": "Übungsplatz Hof", "fahrzeuge": "LF 10", "hinweis": "Starke Rauchentwicklung"},
-    {"name": "THL1 - Ölspur", "stichwort": "THL1 - Ölspur klein", "adresse": "Hauptstraße / Parkplatz", "fahrzeuge": "MTW", "hinweis": "Ölbinder erforderlich"},
-    {"name": "BMA - Fehlauslösung", "stichwort": "BMA - Auslösung", "adresse": "Musterfirma, Hallenstr. 4", "fahrzeuge": "LF 10", "hinweis": "Rauchmelder Linie 12"},
-    {"name": "THL - Person in Not", "stichwort": "THL1 - Türöffnung", "adresse": "Musterweg 12", "fahrzeuge": "MTW", "hinweis": "Hilflose Person"}
-]
+DEFAULT_SETTINGS = {
+    "fahrzeuge": ["LF 10", "MTW", "TLF 3000", "ELW 1", "DLK 23/12"],
+    "stichwoerter": ["B1 - Containerbrand", "B2 - Gebäudebrand", "THL1 - Ölspur", "THL2 - VU Person klemmt", "BMA - Auslösung"],
+    "ziele": ["Übungsplatz Hof", "Hauptstraße / Parkplatz", "Musterfirma, Hallenstr. 4", "Musterweg 12", "Gerätehaus"],
+    "presets": [
+        {"name": "Containerbrand", "stichwort": "B1 - Containerbrand", "adresse": "Übungsplatz Hof", "fahrzeuge": "LF 10", "hinweis": "Starke Rauchentwicklung"},
+        {"name": "Ölspur klein", "stichwort": "THL1 - Ölspur", "adresse": "Hauptstraße / Parkplatz", "fahrzeuge": "MTW", "hinweis": "Ölbinder erforderlich"},
+        {"name": "Fehlauslösung BMA", "stichwort": "BMA - Auslösung", "adresse": "Musterfirma, Hallenstr. 4", "fahrzeuge": "LF 10", "hinweis": "Rauchmelder Linie 12"}
+    ]
+}
 
 def load_data():
     with file_lock:
@@ -36,14 +42,33 @@ def save_data(data):
         except Exception as e:
             print(f"Fehler beim Speichern der JSON-Datei: {e}")
 
+def load_settings():
+    with file_lock:
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Fehler beim Laden der Settings-Datei: {e}")
+        return DEFAULT_SETTINGS.copy()
+
+def save_settings(data):
+    with file_lock:
+        try:
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Fehler beim Speichern der Settings-Datei: {e}")
+
 @app.route('/')
 def display():
     return render_template('display.html')
 
 @app.route('/admin')
 def admin():
-    return render_template('admin.html', presets=PRESETS)
+    return render_template('admin.html')
 
+# === API ALARME ===
 @app.route('/api/alarm', methods=['GET', 'POST'])
 def handle_alarm():
     data_store = load_data()
@@ -102,6 +127,29 @@ def handle_history():
         return jsonify({"status": "cleared", "history": []})
         
     return jsonify(data_store.get("alarm_history", []))
+
+# === API EINSTELLUNGEN & PRESETS ===
+@app.route('/api/settings', methods=['GET', 'POST'])
+def handle_settings():
+    if request.method == 'POST':
+        data = request.json or {}
+        save_settings(data)
+        return jsonify({"status": "success", "settings": data})
+    return jsonify(load_settings())
+
+@app.route('/api/settings/reset', methods=['POST'])
+def reset_settings():
+    req_data = request.json or {}
+    category = req_data.get('category')
+    current_settings = load_settings()
+    
+    if category in DEFAULT_SETTINGS:
+        current_settings[category] = DEFAULT_SETTINGS[category].copy()
+    elif category == 'all':
+        current_settings = DEFAULT_SETTINGS.copy()
+        
+    save_settings(current_settings)
+    return jsonify({"status": "reset", "settings": current_settings})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

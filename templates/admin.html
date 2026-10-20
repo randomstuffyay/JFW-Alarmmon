@@ -5,76 +5,255 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steuerung Alarmmonitor</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 15px; max-width: 650px; margin: auto; background: #f0f2f5; }
-        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
-        input, button { width: 100%; padding: 12px; margin: 6px 0; font-size: 16px; box-sizing: border-box; border-radius: 6px; }
+        body { font-family: Arial, sans-serif; padding: 15px; max-width: 750px; margin: auto; background: #f0f2f5; }
+        
+        /* Tabs */
+        .tab-nav { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; background: #e0e0e0; border: none; cursor: pointer; text-align: center; }
+        .tab-btn.active { background: #e74c3c; color: white; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 10px; margin: 6px 0; font-size: 15px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
         button { background: #e74c3c; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .btn-preset { background: #34495e; font-size: 13px; padding: 10px; }
+        
+        .chip-container { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+        .chip { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: pointer; user-select: none; }
+        .chip:hover { background: #d5dbdb; }
+        .chip.selected { background: #3498db; color: white; border-color: #2980b9; }
+
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+        .btn-del { width: auto; background: #e74c3c; padding: 4px 10px; font-size: 12px; margin: 0; }
         .btn-stop { background: #27ae60; font-size: 13px; padding: 8px; margin-top: 5px; }
+        .btn-reset { background: #e67e22; font-size: 12px; padding: 6px; margin-top: 8px; width: auto; float: right; }
         .btn-clear { background: #c0392b; font-size: 12px; padding: 6px; margin-top: 10px; }
+        
         .active-item { background: #fff3f3; border-left: 4px solid #e74c3c; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
         .toast { display: none; background: #2ecc71; color: white; text-align: center; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-weight: bold; }
         ul { padding-left: 20px; margin: 0; font-size: 14px; color: #555; }
+        .clear { clear: both; }
     </style>
 </head>
 <body>
 
 <div id="toast" class="toast">EINSATZ ERFOLGREICH ALARMIERT!</div>
 
-<div class="section">
-    <h2>Aktive Einsätze</h2>
-    <div id="activeList"><i>Keine aktiven Einsätze</i></div>
-    <button style="background: #7f8c8d; margin-top: 10px;" onclick="resetAll()">ALLE EINSÄTZE BEENDEN</button>
+<!-- Tab Navigation -->
+<div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('tab-alarm')">🚨 Alarmierung</button>
+    <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ Stammdaten & Presets</button>
 </div>
 
-<div class="section">
-    <h2>Schnellauswahl (Presets)</h2>
-    <div class="preset-grid">
-        {% for p in presets %}
-        <button class="btn-preset" onclick='applyPreset({{ p|tojson }})'>{{ p.name }}</button>
-        {% endfor %}
+<!-- TAB 1: ALARMIERUNG -->
+<div id="tab-alarm" class="tab-content active">
+    <div class="section">
+        <h2>Aktive Einsätze</h2>
+        <div id="activeList"><i>Keine aktiven Einsätze</i></div>
+        <button style="background: #7f8c8d; margin-top: 10px;" onclick="resetAll()">ALLE EINSÄTZE BEENDEN</button>
+    </div>
+
+    <div class="section">
+        <h2>Einsatz auslösen</h2>
+        
+        <label><b>Einsatz-Preset auswählen:</b></label>
+        <select id="presetSelect" onchange="applySelectedPreset()">
+            <option value="">-- Manuelle Eingabe / Kein Preset --</option>
+        </select>
+
+        <label style="margin-top:10px; display:block;"><b>Stichwort:</b></label>
+        <div id="stichwortChips" class="chip-container"></div>
+        <input type="text" id="stichwort" placeholder="Stichwort manuell oder aus Vorlage wählen">
+
+        <label style="margin-top:10px; display:block;"><b>Einsatzort / Ziel:</b></label>
+        <div id="zielChips" class="chip-container"></div>
+        <input type="text" id="adresse" placeholder="Einsatzort manuell oder aus Vorlage wählen">
+
+        <label style="margin-top:10px; display:block;"><b>Fahrzeuge / Einheiten:</b></label>
+        <div id="fahrzeugChips" class="chip-container"></div>
+        <input type="text" id="fahrzeuge" placeholder="Ausgewählte Fahrzeuge">
+
+        <label style="margin-top:10px; display:block;"><b>Zusatzhinweis:</b></label>
+        <input type="text" id="hinweis" placeholder="Zusatzhinweis (optional)">
+        
+        <button onclick="sendAlarm()" style="margin-top: 15px; font-size: 18px; padding: 14px;">EINSATZ ALARMIEREN</button>
+    </div>
+
+    <div class="section">
+        <h2>Einsatzprotokoll (Tag)</h2>
+        <ul id="history"></ul>
+        <button class="btn-clear" onclick="clearHistory()">Tagesprotokoll zurücksetzen</button>
     </div>
 </div>
 
-<div class="section">
-    <h2>Neuen Einsatz auslösen</h2>
-    <input type="text" id="stichwort" placeholder="Stichwort (z. B. B1 - Containerbrand)">
-    <input type="text" id="adresse" placeholder="Einsatzort">
-    <input type="text" id="fahrzeuge" placeholder="Fahrzeuge">
-    <input type="text" id="hinweis" placeholder="Zusatzhinweis (optional)">
+<!-- TAB 2: EINSTELLUNGEN -->
+<div id="tab-settings" class="tab-content">
     
-    <button onclick="sendAlarm()">EINSATZ ALARMIEREN</button>
-</div>
+    <!-- Presets Verwalten -->
+    <div class="section">
+        <h2>Presets (Einsatzvoreinstellungen)</h2>
+        <div id="presetsList"></div>
+        <hr>
+        <h3>Neues Preset anlegen</h3>
+        <input type="text" id="newPresetName" placeholder="Name des Presets (z. B. Containerbrand)">
+        <input type="text" id="newPresetStichwort" placeholder="Stichwort">
+        <input type="text" id="newPresetAdresse" placeholder="Einsatzort">
+        <input type="text" id="newPresetFahrzeuge" placeholder="Fahrzeuge">
+        <input type="text" id="newPresetHinweis" placeholder="Hinweis (optional)">
+        <button onclick="addPreset()" style="background:#27ae60;">Preset Speichern</button>
+        <button class="btn-reset" onclick="resetCategory('presets')">Presets auf Standard zurücksetzen</button>
+        <div class="clear"></div>
+    </div>
 
-<div class="section">
-    <h2>Einsatzprotokoll (Tag)</h2>
-    <ul id="history"></ul>
-    <button class="btn-clear" onclick="clearHistory()">Tagesprotokoll zurücksetzen</button>
+    <!-- Fahrzeuge Verwalten -->
+    <div class="section">
+        <h2>Verfügbare Fahrzeuge</h2>
+        <div id="fahrzeugeList"></div>
+        <div style="display:flex; gap: 5px; margin-top: 10px;">
+            <input type="text" id="newFahrzeug" placeholder="Neues Fahrzeug (z. B. LF 20)" style="margin:0;">
+            <button onclick="addItem('fahrzeuge', 'newFahrzeug')" style="width: auto; background:#27ae60; margin:0;">Hinzufügen</button>
+        </div>
+        <button class="btn-reset" onclick="resetCategory('fahrzeuge')">Fahrzeuge zurücksetzen</button>
+        <div class="clear"></div>
+    </div>
+
+    <!-- Stichwörter Verwalten -->
+    <div class="section">
+        <h2>Alarmstichwörter</h2>
+        <div id="stichwoerterList"></div>
+        <div style="display:flex; gap: 5px; margin-top: 10px;">
+            <input type="text" id="newStichwort" placeholder="Neues Stichwort (z. B. B3 - Dachstuhlbrand)" style="margin:0;">
+            <button onclick="addItem('stichwoerter', 'newStichwort')" style="width: auto; background:#27ae60; margin:0;">Hinzufügen</button>
+        </div>
+        <button class="btn-reset" onclick="resetCategory('stichwoerter')">Stichwörter zurücksetzen</button>
+        <div class="clear"></div>
+    </div>
+
+    <!-- Einsatzorte Verwalten -->
+    <div class="section">
+        <h2>Einsatzorte / Ziele</h2>
+        <div id="zieleList"></div>
+        <div style="display:flex; gap: 5px; margin-top: 10px;">
+            <input type="text" id="newZiel" placeholder="Neuer Ort (z. B. Schulzentrum)" style="margin:0;">
+            <button onclick="addItem('ziele', 'newZiel')" style="width: auto; background:#27ae60; margin:0;">Hinzufügen</button>
+        </div>
+        <button class="btn-reset" onclick="resetCategory('ziele')">Ziele zurücksetzen</button>
+        <div class="clear"></div>
+    </div>
+
+    <button onclick="resetCategory('all')" style="background:#c0392b; margin-bottom: 30px;">ALLE STAMMDATEN AUF WERKSZUSTAND ZURÜCKSETZEN</button>
 </div>
 
 <script>
+    let settingsData = { fahrzeuge: [], stichwoerter: [], ziele: [], presets: [] };
+    let selectedVehicles = new Set();
+
     function escapeHtml(text) {
         if (!text) return '';
         return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function applyPreset(p) {
-        document.getElementById('stichwort').value = p.stichwort;
-        document.getElementById('adresse').value = p.adresse;
-        document.getElementById('fahrzeuge').value = p.fahrzeuge;
-        document.getElementById('hinweis').value = p.hinweis;
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
     }
 
-    function showToast() {
+    function showToast(msg) {
         const toast = document.getElementById('toast');
+        toast.innerText = msg || 'EINSATZ ERFOLGREICH ALARMIERT!';
         toast.style.display = 'block';
         setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    // === SETTINGS & UI LADEN ===
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            settingsData = await res.json();
+            renderSettingsUI();
+            renderAlarmFormChips();
+        } catch(e) {}
+    }
+
+    async function saveSettingsData() {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(settingsData)
+        });
+        loadSettings();
+    }
+
+    async function resetCategory(cat) {
+        if (confirm(`Möchtest du die Kategorie '${cat}' wirklich auf den Standard zurücksetzen?`)) {
+            await fetch('/api/settings/reset', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ category: cat })
+            });
+            loadSettings();
+        }
+    }
+
+    // === TAB 1: ALARMIERUNG LOGIK ===
+    function renderAlarmFormChips() {
+        // Presets Dropdown
+        const pSelect = document.getElementById('presetSelect');
+        pSelect.innerHTML = '<option value="">-- Manuelle Eingabe / Kein Preset --</option>' +
+            settingsData.presets.map((p, idx) => `<option value="${idx}">${escapeHtml(p.name)}</option>`).join('');
+
+        // Stichwort Chips
+        document.getElementById('stichwortChips').innerHTML = settingsData.stichwoerter.map(s => 
+            `<div class="chip" onclick="document.getElementById('stichwort').value='${escapeHtml(s)}'">${escapeHtml(s)}</div>`
+        ).join('');
+
+        // Ziel Chips
+        document.getElementById('zielChips').innerHTML = settingsData.ziele.map(z => 
+            `<div class="chip" onclick="document.getElementById('adresse').value='${escapeHtml(z)}'">${escapeHtml(z)}</div>`
+        ).join('');
+
+        // Fahrzeug Chips
+        renderFahrzeugChips();
+    }
+
+    function renderFahrzeugChips() {
+        document.getElementById('fahrzeugChips').innerHTML = settingsData.fahrzeuge.map(f => {
+            const isSel = selectedVehicles.has(f);
+            return `<div class="chip ${isSel ? 'selected' : ''}" onclick="toggleFahrzeug('${escapeHtml(f)}')">${escapeHtml(f)}</div>`;
+        }).join('');
+        document.getElementById('fahrzeuge').value = Array.from(selectedVehicles).join(', ');
+    }
+
+    function toggleFahrzeug(f) {
+        if (selectedVehicles.has(f)) {
+            selectedVehicles.delete(f);
+        } else {
+            selectedVehicles.add(f);
+        }
+        renderFahrzeugChips();
+    }
+
+    function applySelectedPreset() {
+        const idx = document.getElementById('presetSelect').value;
+        if (idx === "") return;
+        const p = settingsData.presets[idx];
+        if (!p) return;
+
+        document.getElementById('stichwort').value = p.stichwort || '';
+        document.getElementById('adresse').value = p.adresse || '';
+        document.getElementById('hinweis').value = p.hinweis || '';
+
+        selectedVehicles.clear();
+        if (p.fahrzeuge) {
+            p.fahrzeuge.split(',').forEach(f => selectedVehicles.add(f.trim()));
+        }
+        renderFahrzeugChips();
     }
 
     async function sendAlarm() {
@@ -100,8 +279,11 @@
         document.getElementById('adresse').value = '';
         document.getElementById('fahrzeuge').value = '';
         document.getElementById('hinweis').value = '';
+        document.getElementById('presetSelect').value = '';
+        selectedVehicles.clear();
+        renderFahrzeugChips();
 
-        showToast();
+        showToast("EINSATZ ERFOLGREICH ALARMIERT!");
         loadActive();
         loadHistory();
     }
@@ -161,7 +343,75 @@
         }
     }
 
+    // === TAB 2: EINSTELLUNGEN LOGIK ===
+    function renderSettingsUI() {
+        // Presets Liste
+        document.getElementById('presetsList').innerHTML = settingsData.presets.map((p, idx) => `
+            <div class="list-item">
+                <div>
+                    <b>${escapeHtml(p.name)}</b>: ${escapeHtml(p.stichwort)} | ${escapeHtml(p.adresse)} | ${escapeHtml(p.fahrzeuge)}
+                </div>
+                <button class="btn-del" onclick="deletePreset(${idx})">Löschen</button>
+            </div>
+        `).join('') || '<i>Keine Presets vorhanden</i>';
+
+        // Listen für Fahrzeuge, Stichwörter, Ziele
+        ['fahrzeuge', 'stichwoerter', 'ziele'].forEach(cat => {
+            document.getElementById(`${cat}List`).innerHTML = settingsData[cat].map((item, idx) => `
+                <div class="list-item">
+                    <span>${escapeHtml(item)}</span>
+                    <button class="btn-del" onclick="deleteItem('${cat}', ${idx})">Löschen</button>
+                </div>
+            `).join('') || '<i>Keine Einträge</i>';
+        });
+    }
+
+    function addItem(cat, inputId) {
+        const input = document.getElementById(inputId);
+        const val = input.value.trim();
+        if (val) {
+            settingsData[cat].push(val);
+            input.value = '';
+            saveSettingsData();
+        }
+    }
+
+    function deleteItem(cat, idx) {
+        settingsData[cat].splice(idx, 1);
+        saveSettingsData();
+    }
+
+    function addPreset() {
+        const name = document.getElementById('newPresetName').value.trim();
+        const stichwort = document.getElementById('newPresetStichwort').value.trim();
+        const adresse = document.getElementById('newPresetAdresse').value.trim();
+        const fahrzeuge = document.getElementById('newPresetFahrzeuge').value.trim();
+        const hinweis = document.getElementById('newPresetHinweis').value.trim();
+
+        if (!name || !stichwort) {
+            alert("Bitte mindestens Name und Stichwort für das Preset eingeben!");
+            return;
+        }
+
+        settingsData.presets.push({ name, stichwort, adresse, fahrzeuge, hinweis });
+        
+        document.getElementById('newPresetName').value = '';
+        document.getElementById('newPresetStichwort').value = '';
+        document.getElementById('newPresetAdresse').value = '';
+        document.getElementById('newPresetFahrzeuge').value = '';
+        document.getElementById('newPresetHinweis').value = '';
+
+        saveSettingsData();
+    }
+
+    function deletePreset(idx) {
+        settingsData.presets.splice(idx, 1);
+        saveSettingsData();
+    }
+
+    // Initialisierung
     setInterval(loadActive, 3000);
+    loadSettings();
     loadActive();
     loadHistory();
 </script>
