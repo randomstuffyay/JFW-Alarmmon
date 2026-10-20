@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steuerung Alarmmonitor</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 15px; max-width: 650px; margin: auto; background: #f0f2f5; }
+        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        input, button { width: 100%; padding: 12px; margin: 6px 0; font-size: 16px; box-sizing: border-box; border-radius: 6px; }
+        button { background: #e74c3c; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .btn-preset { background: #34495e; font-size: 13px; padding: 10px; }
+        .btn-stop { background: #27ae60; font-size: 13px; padding: 8px; margin-top: 5px; }
+        .active-item { background: #fff3f3; border-left: 4px solid #e74c3c; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="section">
+    <h2>Aktive Einsätze</h2>
+    <div id="activeList"><i>Keine aktiven Einsätze</i></div>
+    <button style="background: #7f8c8d; margin-top: 10px;" onclick="resetAll()">ALLE EINSÄTZE BEENDEN</button>
+</div>
+
+<div class="section">
+    <h2>Schnellauswahl (Presets)</h2>
+    <div class="preset-grid">
+        {% for p in presets %}
+        <button class="btn-preset" onclick='applyPreset({{ p|tojson }})'>{{ p.name }}</button>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h2>Neuen Einsatz auslösen</h2>
+    <input type="text" id="stichwort" placeholder="Stichwort (z. B. B1 - Containerbrand)">
+    <input type="text" id="adresse" placeholder="Einsatzort">
+    <input type="text" id="fahrzeuge" placeholder="Fahrzeuge">
+    <input type="text" id="hinweis" placeholder="Zusatzhinweis (optional)">
+    
+    <button onclick="sendAlarm()">EINSATZ ALARMIEREN</button>
+</div>
+
+<script>
+    function applyPreset(p) {
+        document.getElementById('stichwort').value = p.stichwort;
+        document.getElementById('adresse').value = p.adresse;
+        document.getElementById('fahrzeuge').value = p.fahrzeuge;
+        document.getElementById('hinweis').value = p.hinweis;
+    }
+
+    async function sendAlarm() {
+        const payload = {
+            stichwort: document.getElementById('stichwort').value,
+            adresse: document.getElementById('adresse').value,
+            fahrzeuge: document.getElementById('fahrzeuge').value,
+            hinweis: document.getElementById('hinweis').value
+        };
+        await fetch('/api/alarm', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        loadActive();
+    }
+
+    async function stopAlarm(id) {
+        await fetch('/api/alarm/reset', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id: id })
+        });
+        loadActive();
+    }
+
+    async function resetAll() {
+        await fetch('/api/alarm/reset', { method: 'POST' });
+        loadActive();
+    }
+
+    async function loadActive() {
+        const res = await fetch('/api/alarm');
+        const alarms = await res.json();
+        const listEl = document.getElementById('activeList');
+
+        if (!alarms || alarms.length === 0) {
+            listEl.innerHTML = '<i>Keine aktiven Einsätze</i>';
+            return;
+        }
+
+        listEl.innerHTML = alarms.map(a => `
+            <div class="active-item">
+                <b>${a.stichwort}</b> (${a.timestr})<br>
+                ${a.adresse} | ${a.fahrzeuge}
+                <button class="btn-stop" onclick="stopAlarm(${a.id})">Diesen Einsatz beenden</button>
+            </div>
+        `).join('');
+    }
+
+    setInterval(loadActive, 3000);
+    loadActive();
+</script>
+</body>
+</html>

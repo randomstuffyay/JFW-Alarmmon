@@ -1,0 +1,91 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Alarmmonitor</title>
+    <style>
+        body { background: #111; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; }
+        .idle { text-align: center; margin-top: 22vh; color: #333; font-size: 4.5em; font-weight: bold; letter-spacing: 2px; }
+        .alarm-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+        .alarm-card { border: 4px solid #e74c3c; padding: 20px; background: #1a1a1a; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; }
+        .stichwort { background: #c0392b; color: #fff; font-size: 2.6em; padding: 15px; text-align: center; font-weight: bold; border-radius: 8px; }
+        .details { font-size: 1.7em; margin-top: 15px; line-height: 1.5; flex-grow: 1; }
+        .label { color: #f39c12; font-weight: bold; display: inline-block; width: 140px; }
+        .timer-box { margin-top: 15px; font-size: 1.3em; color: #2ecc71; text-align: right; border-top: 1px solid #333; padding-top: 10px; }
+
+        @keyframes flash {
+            0% { border-color: #e74c3c; }
+            50% { border-color: #f1c40f; }
+            100% { border-color: #e74c3c; }
+        }
+        .flashing { animation: flash 0.8s 4; }
+    </style>
+</head>
+<body>
+
+<div id="idle" class="idle">EINSATZBEREIT</div>
+<div id="grid" class="alarm-grid"></div>
+
+<audio id="gong" src="/static/gong.mp3" preload="auto"></audio>
+
+<script>
+    let knownAlarmIds = new Set();
+
+    async function poll() {
+        try {
+            const res = await fetch('/api/alarm');
+            const alarms = await res.json();
+            const idleEl = document.getElementById('idle');
+            const gridEl = document.getElementById('grid');
+
+            if (!alarms || alarms.length === 0) {
+                idleEl.style.display = 'block';
+                gridEl.innerHTML = '';
+                knownAlarmIds.clear();
+                return;
+            }
+
+            idleEl.style.display = 'none';
+
+            let isNew = false;
+            alarms.forEach(a => {
+                if (!knownAlarmIds.has(a.id)) {
+                    knownAlarmIds.add(a.id);
+                    isNew = true;
+                }
+            });
+
+            if (isNew) {
+                const audio = document.getElementById('gong');
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+            }
+
+            const now = Math.floor(Date.now() / 1000);
+            gridEl.innerHTML = alarms.map(a => {
+                const diff = Math.max(0, Math.floor(now - a.timestamp));
+                const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+                const secs = String(diff % 60).padStart(2, '0');
+
+                return `
+                    <div class="alarm-card ${isNew ? 'flashing' : ''}">
+                        <div class="stichwort">${a.stichwort}</div>
+                        <div class="details">
+                            <p><span class="label">Ort:</span> ${a.adresse}</p>
+                            <p><span class="label">Einheiten:</span> ${a.fahrzeuge}</p>
+                            <p><span class="label">Hinweis:</span> ${a.hinweis || '-'}</p>
+                        </div>
+                        <div class="timer-box">
+                            Alarmzeit: ${a.timestr} | Laufzeit: ${mins}:${secs}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) { console.error(e); }
+    }
+
+    setInterval(poll, 1000);
+</script>
+</body>
+</html>
