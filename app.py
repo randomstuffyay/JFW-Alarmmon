@@ -1,6 +1,7 @@
 ﻿import os
 import json
 import time
+import threading
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 
@@ -8,6 +9,7 @@ app = Flask(__name__)
 
 AUTO_RESET_MINUTES = 30
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'alarms.json')
+file_lock = threading.Lock()
 
 PRESETS = [
     {"name": "B1 - Containerbrand", "stichwort": "B1 - Containerbrand", "adresse": "Übungsplatz Hof", "fahrzeuge": "LF 10", "hinweis": "Starke Rauchentwicklung"},
@@ -17,20 +19,22 @@ PRESETS = [
 ]
 
 def load_data():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Fehler beim Laden der JSON-Datei: {e}")
-    return {"active_alarms": [], "alarm_history": []}
+    with file_lock:
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Fehler beim Laden der JSON-Datei: {e}")
+        return {"active_alarms": [], "alarm_history": []}
 
 def save_data(data):
-    try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"Fehler beim Speichern der JSON-Datei: {e}")
+    with file_lock:
+        try:
+            with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Fehler beim Speichern der JSON-Datei: {e}")
 
 @app.route('/')
 def display():
@@ -64,7 +68,6 @@ def handle_alarm():
         save_data({"active_alarms": active_alarms, "alarm_history": alarm_history})
         return jsonify({"status": "success", "alarms": active_alarms})
     
-    # Auto-Reset veralteter Alarme
     cleaned_active = [
         a for a in active_alarms 
         if (now_ts - a['timestamp']) < (AUTO_RESET_MINUTES * 60)

@@ -8,6 +8,7 @@
         .idle-container { text-align: center; margin-top: 15vh; color: #444; }
         .idle-title { font-size: 3.5em; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; color: #2ecc71; }
         .idle-clock { font-size: 6em; font-weight: bold; color: #888; font-family: monospace; }
+        .audio-hint { margin-top: 25px; font-size: 1.1em; color: #e67e22; cursor: pointer; display: inline-block; padding: 8px 15px; border: 1px dashed #e67e22; border-radius: 6px; }
         
         .alarm-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
         .alarm-card { border: 4px solid #e74c3c; padding: 20px; background: #1a1a1a; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; }
@@ -26,13 +27,14 @@
         .flashing { animation: flash 0.8s 4; }
     </style>
 </head>
-<body>
+<body onclick="unlockAudio()">
 
 <div id="offlineBanner" class="offline-banner">VERBINDUNG ZUM SERVER UNTERBROCHEN</div>
 
 <div id="idle" class="idle-container">
     <div class="idle-title">EINSATZBEREIT</div>
     <div id="clock" class="idle-clock">00:00:00</div>
+    <div id="audioHint" class="audio-hint" onclick="unlockAudio()">🔔 Bildschirmoberfläche anklicken um Alarmton freizuschalten</div>
 </div>
 
 <div id="grid" class="alarm-grid"></div>
@@ -41,13 +43,28 @@
 
 <script>
     let knownAlarmIds = new Set();
+    let currentAlarms = [];
+    let audioUnlocked = false;
+
+    function unlockAudio() {
+        if (!audioUnlocked) {
+            const audio = document.getElementById('gong');
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audioUnlocked = true;
+                const hint = document.getElementById('audioHint');
+                if (hint) hint.style.display = 'none';
+            }).catch(() => {});
+        }
+    }
 
     function escapeHtml(text) {
         if (!text) return '';
         return String(text)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
+            .replace/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
@@ -61,6 +78,20 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    function updateTimers() {
+        const now = Math.floor(Date.now() / 1000);
+        currentAlarms.forEach(a => {
+            const timerEl = document.getElementById(`timer-${a.id}`);
+            if (timerEl) {
+                const diff = Math.max(0, Math.floor(now - a.timestamp));
+                const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+                const secs = String(diff % 60).padStart(2, '0');
+                timerEl.innerText = `${mins}:${secs}`;
+            }
+        });
+    }
+    setInterval(updateTimers, 1000);
 
     async function poll() {
         try {
@@ -77,45 +108,54 @@
                 idleEl.style.display = 'block';
                 gridEl.innerHTML = '';
                 knownAlarmIds.clear();
+                currentAlarms = [];
                 return;
             }
 
             idleEl.style.display = 'none';
 
-            let isNew = false;
+            const newIds = new Set(alarms.map(a => a.id));
+            const idsChanged = alarms.length !== currentAlarms.length || 
+                               Array.from(newIds).some(id => !knownAlarmIds.has(id));
+
+            let isNewAlarmTriggered = false;
             alarms.forEach(a => {
                 if (!knownAlarmIds.has(a.id)) {
                     knownAlarmIds.add(a.id);
-                    isNew = true;
+                    isNewAlarmTriggered = true;
                 }
             });
 
-            if (isNew) {
+            if (isNewAlarmTriggered) {
                 const audio = document.getElementById('gong');
                 audio.currentTime = 0;
                 audio.play().catch(() => {});
             }
 
-            const now = Math.floor(Date.now() / 1000);
-            gridEl.innerHTML = alarms.map(a => {
-                const diff = Math.max(0, Math.floor(now - a.timestamp));
-                const mins = String(Math.floor(diff / 60)).padStart(2, '0');
-                const secs = String(diff % 60).padStart(2, '0');
+            if (idsChanged) {
+                currentAlarms = alarms;
+                const now = Math.floor(Date.now() / 1000);
 
-                return `
-                    <div class="alarm-card ${isNew ? 'flashing' : ''}">
-                        <div class="stichwort">${escapeHtml(a.stichwort)}</div>
-                        <div class="details">
-                            <p><span class="label">Ort:</span> ${escapeHtml(a.adresse)}</p>
-                            <p><span class="label">Einheiten:</span> ${escapeHtml(a.fahrzeuge)}</p>
-                            <p><span class="label">Hinweis:</span> ${escapeHtml(a.hinweis) || '-'}</p>
+                gridEl.innerHTML = alarms.map(a => {
+                    const diff = Math.max(0, Math.floor(now - a.timestamp));
+                    const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+                    const secs = String(diff % 60).padStart(2, '0');
+
+                    return `
+                        <div class="alarm-card ${isNewAlarmTriggered ? 'flashing' : ''}">
+                            <div class="stichwort">${escapeHtml(a.stichwort)}</div>
+                            <div class="details">
+                                <p><span class="label">Ort:</span> ${escapeHtml(a.adresse)}</p>
+                                <p><span class="label">Einheiten:</span> ${escapeHtml(a.fahrzeuge)}</p>
+                                <p><span class="label">Hinweis:</span> ${escapeHtml(a.hinweis) || '-'}</p>
+                            </div>
+                            <div class="timer-box">
+                                Alarmzeit: ${escapeHtml(a.timestr)} | Laufzeit: <span id="timer-${a.id}">${mins}:${secs}</span>
+                            </div>
                         </div>
-                        <div class="timer-box">
-                            Alarmzeit: ${escapeHtml(a.timestr)} | Laufzeit: ${mins}:${secs}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
 
         } catch (e) {
             document.getElementById('offlineBanner').style.display = 'block';

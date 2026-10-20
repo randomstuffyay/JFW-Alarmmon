@@ -1,7 +1,9 @@
 ﻿#!/bin/bash
 set -e
 
-INSTALL_DIR="$HOME/alarmmonitor"
+REAL_USER=${SUDO_USER:-$USER}
+REAL_HOME=$(eval echo "~$REAL_USER")
+INSTALL_DIR="$REAL_HOME/alarmmonitor"
 
 echo "[1/6] Aktualisiere Paketlisten und installiere Software..."
 sudo apt update
@@ -13,7 +15,7 @@ sudo raspi-config nonint do_boot_behaviour B4
 echo "[3/6] Erstelle Ordnerstruktur..."
 mkdir -p "$INSTALL_DIR/static"
 mkdir -p "$INSTALL_DIR/templates"
-mkdir -p "$HOME/.config/autostart"
+mkdir -p "$REAL_HOME/.config/autostart"
 
 echo "[4/6] Generiere Standard-Alarmton..."
 if [ ! -f "$INSTALL_DIR/static/gong.mp3" ]; then
@@ -30,7 +32,7 @@ Description=Feuerwehr Alarmmonitor Webserver
 After=network.target
 
 [Service]
-User=$USER
+User=$REAL_USER
 WorkingDirectory=$INSTALL_DIR
 ExecStart=/usr/bin/python3 $INSTALL_DIR/app.py
 Restart=always
@@ -45,12 +47,14 @@ sudo systemctl enable alarmmonitor.service
 sudo systemctl restart alarmmonitor.service
 
 echo "[6/6] Richte Kiosk Autostart ein..."
-cat <<DESKTOPEOF > "$HOME/.config/autostart/kiosk.desktop"
+cat <<DESKTOPEOF > "$REAL_HOME/.config/autostart/kiosk.desktop"
 [Desktop Entry]
 Type=Application
 Name=Alarmmonitor Kiosk
 Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 --autoplay-policy=no-user-gesture-required http://localhost:5000
 X-GNOME-Autostart-enabled=true
 DESKTOPEOF
+
+chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR" "$REAL_HOME/.config/autostart/kiosk.desktop"
 
 echo "Installation abgeschlossen!"
