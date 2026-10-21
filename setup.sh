@@ -28,7 +28,7 @@ fi
 echo "[5/6] Richte systemd-Service ein..."
 cat <<SERVICEEOF | sudo tee /etc/systemd/system/alarmmonitor.service > /dev/null
 [Unit]
-Description=Feuerwehr Alarmmonitor Webserver
+Description=Feuerwehr Alarmmonitor Webserver (JFW-Alarmmon)
 After=network.target
 
 [Service]
@@ -52,4 +52,4 @@ bash "$INSTALL_DIR/create_shortcuts.sh"
 
 chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR"
 
-echo "Installation vollständig abgeschlossen!"
+echo "Installation von JFW-Alarmmon vollständig abgeschlossen!"
