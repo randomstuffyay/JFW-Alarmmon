@@ -68,7 +68,6 @@ def display():
 def admin():
     return render_template('admin.html')
 
-# === API ALARME ===
 @app.route('/api/alarm', methods=['GET', 'POST'])
 def handle_alarm():
     data_store = load_data()
@@ -128,7 +127,6 @@ def handle_history():
         
     return jsonify(data_store.get("alarm_history", []))
 
-# === API EINSTELLUNGEN & PRESETS ===
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
     if request.method == 'POST':

@@ -6,30 +6,23 @@
     <title>Steuerung Alarmmonitor</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 15px; max-width: 750px; margin: auto; background: #f0f2f5; }
-        
-        /* Tabs */
         .tab-nav { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; background: #e0e0e0; border: none; cursor: pointer; text-align: center; }
         .tab-btn.active { background: #e74c3c; color: white; }
-
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
         .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         input, select, button { width: 100%; padding: 10px; margin: 6px 0; font-size: 15px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; }
         button { background: #e74c3c; color: white; border: none; font-weight: bold; cursor: pointer; }
-        
         .chip-container { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
         .chip { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: pointer; user-select: none; }
         .chip:hover { background: #d5dbdb; }
         .chip.selected { background: #3498db; color: white; border-color: #2980b9; }
-
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
         .btn-del { width: auto; background: #e74c3c; padding: 4px 10px; font-size: 12px; margin: 0; }
         .btn-stop { background: #27ae60; font-size: 13px; padding: 8px; margin-top: 5px; }
         .btn-reset { background: #e67e22; font-size: 12px; padding: 6px; margin-top: 8px; width: auto; float: right; }
         .btn-clear { background: #c0392b; font-size: 12px; padding: 6px; margin-top: 10px; }
-        
         .active-item { background: #fff3f3; border-left: 4px solid #e74c3c; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
         .toast { display: none; background: #2ecc71; color: white; text-align: center; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-weight: bold; }
         ul { padding-left: 20px; margin: 0; font-size: 14px; color: #555; }
@@ -40,13 +33,11 @@
 
 <div id="toast" class="toast">EINSATZ ERFOLGREICH ALARMIERT!</div>
 
-<!-- Tab Navigation -->
 <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('tab-alarm')">🚨 Alarmierung</button>
     <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ Stammdaten & Presets</button>
 </div>
 
-<!-- TAB 1: ALARMIERUNG -->
 <div id="tab-alarm" class="tab-content active">
     <div class="section">
         <h2>Aktive Einsätze</h2>
@@ -56,7 +47,6 @@
 
     <div class="section">
         <h2>Einsatz auslösen</h2>
-        
         <label><b>Einsatz-Preset auswählen:</b></label>
         <select id="presetSelect" onchange="applySelectedPreset()">
             <option value="">-- Manuelle Eingabe / Kein Preset --</option>
@@ -87,10 +77,7 @@
     </div>
 </div>
 
-<!-- TAB 2: EINSTELLUNGEN -->
 <div id="tab-settings" class="tab-content">
-    
-    <!-- Presets Verwalten -->
     <div class="section">
         <h2>Presets (Einsatzvoreinstellungen)</h2>
         <div id="presetsList"></div>
@@ -102,11 +89,10 @@
         <input type="text" id="newPresetFahrzeuge" placeholder="Fahrzeuge">
         <input type="text" id="newPresetHinweis" placeholder="Hinweis (optional)">
         <button onclick="addPreset()" style="background:#27ae60;">Preset Speichern</button>
-        <button class="btn-reset" onclick="resetCategory('presets')">Presets auf Standard zurücksetzen</button>
+        <button class="btn-reset" onclick="resetCategory('presets')">Presets zurücksetzen</button>
         <div class="clear"></div>
     </div>
 
-    <!-- Fahrzeuge Verwalten -->
     <div class="section">
         <h2>Verfügbare Fahrzeuge</h2>
         <div id="fahrzeugeList"></div>
@@ -118,7 +104,6 @@
         <div class="clear"></div>
     </div>
 
-    <!-- Stichwörter Verwalten -->
     <div class="section">
         <h2>Alarmstichwörter</h2>
         <div id="stichwoerterList"></div>
@@ -130,7 +115,6 @@
         <div class="clear"></div>
     </div>
 
-    <!-- Einsatzorte Verwalten -->
     <div class="section">
         <h2>Einsatzorte / Ziele</h2>
         <div id="zieleList"></div>
@@ -152,29 +136,28 @@
     function escapeHtml(text) {
         if (!text) return '';
         return String(text)
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
     function switchTab(tabId) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(content) { content.classList.remove('active'); });
         
         event.target.classList.add('active');
         document.getElementById(tabId).classList.add('active');
     }
 
     function showToast(msg) {
-        const toast = document.getElementById('toast');
+        var toast = document.getElementById('toast');
         toast.innerText = msg || 'EINSATZ ERFOLGREICH ALARMIERT!';
         toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        setTimeout(function() { toast.style.display = 'none'; }, 3000);
     }
 
-    // === SETTINGS & UI LADEN ===
     async function loadSettings() {
         try {
-            const res = await fetch('/api/settings');
+            var res = await fetch('/api/settings');
             settingsData = await res.json();
             renderSettingsUI();
             renderAlarmFormChips();
@@ -191,7 +174,7 @@
     }
 
     async function resetCategory(cat) {
-        if (confirm(`Möchtest du die Kategorie '${cat}' wirklich auf den Standard zurücksetzen?`)) {
+        if (confirm("Möchtest du die Kategorie '" + cat + "' wirklich auf den Standard zurücksetzen?")) {
             await fetch('/api/settings/reset', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -201,31 +184,28 @@
         }
     }
 
-    // === TAB 1: ALARMIERUNG LOGIK ===
     function renderAlarmFormChips() {
-        // Presets Dropdown
-        const pSelect = document.getElementById('presetSelect');
+        var pSelect = document.getElementById('presetSelect');
         pSelect.innerHTML = '<option value="">-- Manuelle Eingabe / Kein Preset --</option>' +
-            settingsData.presets.map((p, idx) => `<option value="${idx}">${escapeHtml(p.name)}</option>`).join('');
+            settingsData.presets.map(function(p, idx) {
+                return '<option value="' + idx + '">' + escapeHtml(p.name) + '</option>';
+            }).join('');
 
-        // Stichwort Chips
-        document.getElementById('stichwortChips').innerHTML = settingsData.stichwoerter.map(s => 
-            `<div class="chip" onclick="document.getElementById('stichwort').value='${escapeHtml(s)}'">${escapeHtml(s)}</div>`
-        ).join('');
+        document.getElementById('stichwortChips').innerHTML = settingsData.stichwoerter.map(function(s) {
+            return '<div class="chip" onclick="document.getElementById(\'stichwort\').value=\'' + escapeHtml(s) + '\'">' + escapeHtml(s) + '</div>';
+        }).join('');
 
-        // Ziel Chips
-        document.getElementById('zielChips').innerHTML = settingsData.ziele.map(z => 
-            `<div class="chip" onclick="document.getElementById('adresse').value='${escapeHtml(z)}'">${escapeHtml(z)}</div>`
-        ).join('');
+        document.getElementById('zielChips').innerHTML = settingsData.ziele.map(function(z) {
+            return '<div class="chip" onclick="document.getElementById(\'adresse\').value=\'' + escapeHtml(z) + '\'">' + escapeHtml(z) + '</div>';
+        }).join('');
 
-        // Fahrzeug Chips
         renderFahrzeugChips();
     }
 
     function renderFahrzeugChips() {
-        document.getElementById('fahrzeugChips').innerHTML = settingsData.fahrzeuge.map(f => {
-            const isSel = selectedVehicles.has(f);
-            return `<div class="chip ${isSel ? 'selected' : ''}" onclick="toggleFahrzeug('${escapeHtml(f)}')">${escapeHtml(f)}</div>`;
+        document.getElementById('fahrzeugChips').innerHTML = settingsData.fahrzeuge.map(function(f) {
+            var isSel = selectedVehicles.has(f);
+            return '<div class="chip ' + (isSel ? 'selected' : '') + '" onclick="toggleFahrzeug(\'' + escapeHtml(f) + '\')">' + escapeHtml(f) + '</div>';
         }).join('');
         document.getElementById('fahrzeuge').value = Array.from(selectedVehicles).join(', ');
     }
@@ -240,9 +220,9 @@
     }
 
     function applySelectedPreset() {
-        const idx = document.getElementById('presetSelect').value;
+        var idx = document.getElementById('presetSelect').value;
         if (idx === "") return;
-        const p = settingsData.presets[idx];
+        var p = settingsData.presets[idx];
         if (!p) return;
 
         document.getElementById('stichwort').value = p.stichwort || '';
@@ -251,13 +231,13 @@
 
         selectedVehicles.clear();
         if (p.fahrzeuge) {
-            p.fahrzeuge.split(',').forEach(f => selectedVehicles.add(f.trim()));
+            p.fahrzeuge.split(',').forEach(function(f) { selectedVehicles.add(f.trim()); });
         }
         renderFahrzeugChips();
     }
 
     async function sendAlarm() {
-        const payload = {
+        var payload = {
             stichwort: document.getElementById('stichwort').value,
             adresse: document.getElementById('adresse').value,
             fahrzeuge: document.getElementById('fahrzeuge').value,
@@ -304,35 +284,37 @@
 
     async function loadActive() {
         try {
-            const res = await fetch('/api/alarm');
-            const alarms = await res.json();
-            const listEl = document.getElementById('activeList');
+            var res = await fetch('/api/alarm');
+            var alarms = await res.json();
+            var listEl = document.getElementById('activeList');
 
             if (!alarms || alarms.length === 0) {
                 listEl.innerHTML = '<i>Keine aktiven Einsätze</i>';
                 return;
             }
 
-            listEl.innerHTML = alarms.map(a => `
-                <div class="active-item">
-                    <b>${escapeHtml(a.stichwort)}</b> (${escapeHtml(a.timestr)})<br>
-                    ${escapeHtml(a.adresse)} | ${escapeHtml(a.fahrzeuge)}
-                    <button class="btn-stop" onclick="stopAlarm(${a.id})">Diesen Einsatz beenden</button>
-                </div>
-            `).join('');
+            listEl.innerHTML = alarms.map(function(a) {
+                return '<div class="active-item">' +
+                    '<b>' + escapeHtml(a.stichwort) + '</b> (' + escapeHtml(a.timestr) + ')<br>' +
+                    escapeHtml(a.adresse) + ' | ' + escapeHtml(a.fahrzeuge) +
+                    '<button class="btn-stop" onclick="stopAlarm(' + a.id + ')">Diesen Einsatz beenden</button>' +
+                '</div>';
+            }).join('');
         } catch(e) {}
     }
 
     async function loadHistory() {
         try {
-            const res = await fetch('/api/history');
-            const data = await res.json();
-            const list = document.getElementById('history');
+            var res = await fetch('/api/history');
+            var data = await res.json();
+            var list = document.getElementById('history');
             if (!data || data.length === 0) {
                 list.innerHTML = '<li><i>Keine Einsätze bisher</i></li>';
                 return;
             }
-            list.innerHTML = data.map(h => `<li><b>${escapeHtml(h.timestr)}:</b> ${escapeHtml(h.stichwort)} - ${escapeHtml(h.adresse)}</li>`).join('');
+            list.innerHTML = data.map(function(h) {
+                return '<li><b>' + escapeHtml(h.timestr) + ':</b> ' + escapeHtml(h.stichwort) + ' - ' + escapeHtml(h.adresse) + '</li>';
+            }).join('');
         } catch(e) {}
     }
 
@@ -343,32 +325,27 @@
         }
     }
 
-    // === TAB 2: EINSTELLUNGEN LOGIK ===
     function renderSettingsUI() {
-        // Presets Liste
-        document.getElementById('presetsList').innerHTML = settingsData.presets.map((p, idx) => `
-            <div class="list-item">
-                <div>
-                    <b>${escapeHtml(p.name)}</b>: ${escapeHtml(p.stichwort)} | ${escapeHtml(p.adresse)} | ${escapeHtml(p.fahrzeuge)}
-                </div>
-                <button class="btn-del" onclick="deletePreset(${idx})">Löschen</button>
-            </div>
-        `).join('') || '<i>Keine Presets vorhanden</i>';
+        document.getElementById('presetsList').innerHTML = settingsData.presets.map(function(p, idx) {
+            return '<div class="list-item">' +
+                '<div><b>' + escapeHtml(p.name) + '</b>: ' + escapeHtml(p.stichwort) + ' | ' + escapeHtml(p.adresse) + ' | ' + escapeHtml(p.fahrzeuge) + '</div>' +
+                '<button class="btn-del" onclick="deletePreset(' + idx + ')">Löschen</button>' +
+            '</div>';
+        }).join('') || '<i>Keine Presets vorhanden</i>';
 
-        // Listen für Fahrzeuge, Stichwörter, Ziele
-        ['fahrzeuge', 'stichwoerter', 'ziele'].forEach(cat => {
-            document.getElementById(`${cat}List`).innerHTML = settingsData[cat].map((item, idx) => `
-                <div class="list-item">
-                    <span>${escapeHtml(item)}</span>
-                    <button class="btn-del" onclick="deleteItem('${cat}', ${idx})">Löschen</button>
-                </div>
-            `).join('') || '<i>Keine Einträge</i>';
+        ['fahrzeuge', 'stichwoerter', 'ziele'].forEach(function(cat) {
+            document.getElementById(cat + 'List').innerHTML = settingsData[cat].map(function(item, idx) {
+                return '<div class="list-item">' +
+                    '<span>' + escapeHtml(item) + '</span>' +
+                    '<button class="btn-del" onclick="deleteItem(\'' + cat + '\', ' + idx + ')">Löschen</button>' +
+                '</div>';
+            }).join('') || '<i>Keine Einträge</i>';
         });
     }
 
     function addItem(cat, inputId) {
-        const input = document.getElementById(inputId);
-        const val = input.value.trim();
+        var input = document.getElementById(inputId);
+        var val = input.value.trim();
         if (val) {
             settingsData[cat].push(val);
             input.value = '';
@@ -382,18 +359,18 @@
     }
 
     function addPreset() {
-        const name = document.getElementById('newPresetName').value.trim();
-        const stichwort = document.getElementById('newPresetStichwort').value.trim();
-        const adresse = document.getElementById('newPresetAdresse').value.trim();
-        const fahrzeuge = document.getElementById('newPresetFahrzeuge').value.trim();
-        const hinweis = document.getElementById('newPresetHinweis').value.trim();
+        var name = document.getElementById('newPresetName').value.trim();
+        var stichwort = document.getElementById('newPresetStichwort').value.trim();
+        var adresse = document.getElementById('newPresetAdresse').value.trim();
+        var fahrzeuge = document.getElementById('newPresetFahrzeuge').value.trim();
+        var hinweis = document.getElementById('newPresetHinweis').value.trim();
 
         if (!name || !stichwort) {
             alert("Bitte mindestens Name und Stichwort für das Preset eingeben!");
             return;
         }
 
-        settingsData.presets.push({ name, stichwort, adresse, fahrzeuge, hinweis });
+        settingsData.presets.push({ name: name, stichwort: stichwort, adresse: adresse, fahrzeuge: fahrzeuge, hinweis: hinweis });
         
         document.getElementById('newPresetName').value = '';
         document.getElementById('newPresetStichwort').value = '';
@@ -409,7 +386,6 @@
         saveSettingsData();
     }
 
-    // Initialisierung
     setInterval(loadActive, 3000);
     loadSettings();
     loadActive();
