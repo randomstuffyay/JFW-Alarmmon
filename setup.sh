@@ -3,7 +3,7 @@ set -e
 
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(eval echo "~$REAL_USER")
-INSTALL_DIR="$REAL_HOME/alarmmonitor"
+INSTALL_DIR="$REAL_HOME/JFW-Alarmmon"
 
 echo "[1/6] Aktualisiere Paketlisten und installiere Software..."
 sudo apt update
@@ -52,4 +52,4 @@ bash "$INSTALL_DIR/create_shortcuts.sh"
 
 chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR"
 
-echo "Installation vollständig abgeschlossen
+echo "Installation vollständig abgeschlossen!"

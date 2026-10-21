@@ -4,7 +4,7 @@ set -e
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(eval echo "~$REAL_USER")
 DESKTOP_DIR="$REAL_HOME/Desktop"
-INSTALL_DIR="$REAL_HOME/alarmmonitor"
+INSTALL_DIR="$REAL_HOME/JFW-Alarmmon"
 
 mkdir -p "$DESKTOP_DIR"
 mkdir -p "$REAL_HOME/.config/autostart"
