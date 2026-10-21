@@ -7,7 +7,7 @@ INSTALL_DIR="$REAL_HOME/alarmmonitor"
 
 echo "[1/6] Aktualisiere Paketlisten und installiere Software..."
 sudo apt update
-sudo apt install -y python3 python3-flask chromium-browser unclutter ffmpeg lightdm
+sudo apt install -y python3 python3-flask chromium-browser unclutter ffmpeg lightdm zenity libglib2.0-bin
 
 echo "[2/6] Richte automatischen Benutzer-Login (Autologin) ein..."
 sudo raspi-config nonint do_boot_behaviour B4
@@ -46,15 +46,10 @@ sudo systemctl daemon-reload
 sudo systemctl enable alarmmonitor.service
 sudo systemctl restart alarmmonitor.service
 
-echo "[6/6] Richte Kiosk Autostart ein..."
-cat <<DESKTOPEOF > "$REAL_HOME/.config/autostart/kiosk.desktop"
-[Desktop Entry]
-Type=Application
-Name=Alarmmonitor Kiosk
-Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 --autoplay-policy=no-user-gesture-required http://localhost:5000
-X-GNOME-Autostart-enabled=true
-DESKTOPEOF
+echo "[6/6] Erstelle Desktop-Shortcuts für Autostart Steuerung..."
+chmod +x "$INSTALL_DIR/create_shortcuts.sh" 2>/dev/null || true
+bash "$INSTALL_DIR/create_shortcuts.sh"
 
-chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR" "$REAL_HOME/.config/autostart/kiosk.desktop"
+chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR"
 
-echo "Installation abgeschlossen!"
+echo "Installation vollständig abgeschlossen
