@@ -42,124 +42,125 @@
 <audio id="gong" src="/static/gong.mp3" preload="auto"></audio>
 
 <script>
-    let knownAlarmIds = new Set();
-    let currentAlarms = [];
-    let audioUnlocked = false;
+    var knownAlarmIds = {};
+    var currentAlarms = [];
+    var audioUnlocked = false;
 
     function unlockAudio() {
         if (!audioUnlocked) {
-            const audio = document.getElementById('gong');
-            audio.play().then(() => {
+            var audio = document.getElementById('gong');
+            audio.play().then(function() {
                 audio.pause();
                 audio.currentTime = 0;
                 audioUnlocked = true;
-                const hint = document.getElementById('audioHint');
+                var hint = document.getElementById('audioHint');
                 if (hint) hint.style.display = 'none';
-            }).catch(() => {});
+            }).catch(function(e) {});
         }
     }
 
     function escapeHtml(text) {
         if (!text) return '';
         return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function updateClock() {
-        const now = new Date();
-        const hrs = String(now.getHours()).padStart(2, '0');
-        const mins = String(now.getMinutes()).padStart(2, '0');
-        const secs = String(now.getSeconds()).padStart(2, '0');
-        document.getElementById('clock').innerText = `${hrs}:${mins}:${secs}`;
+        var now = new Date();
+        var hrs = String(now.getHours()).padStart(2, '0');
+        var mins = String(now.getMinutes()).padStart(2, '0');
+        var secs = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('clock').innerText = hrs + ':' + mins + ':' + secs;
     }
     setInterval(updateClock, 1000);
     updateClock();
 
     function updateTimers() {
-        const now = Math.floor(Date.now() / 1000);
-        currentAlarms.forEach(a => {
-            const timerEl = document.getElementById(`timer-${a.id}`);
+        var now = Math.floor(Date.now() / 1000);
+        for (var i = 0; i < currentAlarms.length; i++) {
+            var a = currentAlarms[i];
+            var timerEl = document.getElementById('timer-' + a.id);
             if (timerEl) {
-                const diff = Math.max(0, Math.floor(now - a.timestamp));
-                const mins = String(Math.floor(diff / 60)).padStart(2, '0');
-                const secs = String(diff % 60).padStart(2, '0');
-                timerEl.innerText = `${mins}:${secs}`;
+                var diff = Math.max(0, Math.floor(now - a.timestamp));
+                var mins = String(Math.floor(diff / 60)).padStart(2, '0');
+                var secs = String(diff % 60).padStart(2, '0');
+                timerEl.innerText = mins + ':' + secs;
             }
-        });
+        }
     }
     setInterval(updateTimers, 1000);
 
-    async function poll() {
-        try {
-            const res = await fetch('/api/alarm');
-            if (!res.ok) throw new Error("HTTP Fehler");
-            
-            const alarms = await res.json();
-            document.getElementById('offlineBanner').style.display = 'none';
+    function poll() {
+        fetch('/api/alarm')
+            .then(function(res) {
+                if (!res.ok) throw new Error("HTTP Fehler");
+                return res.json();
+            })
+            .then(function(alarms) {
+                document.getElementById('offlineBanner').style.display = 'none';
 
-            const idleEl = document.getElementById('idle');
-            const gridEl = document.getElementById('grid');
+                var idleEl = document.getElementById('idle');
+                var gridEl = document.getElementById('grid');
 
-            if (!alarms || alarms.length === 0) {
-                idleEl.style.display = 'block';
-                gridEl.innerHTML = '';
-                knownAlarmIds.clear();
-                currentAlarms = [];
-                return;
-            }
-
-            idleEl.style.display = 'none';
-
-            const newIds = new Set(alarms.map(a => a.id));
-            const idsChanged = alarms.length !== currentAlarms.length || 
-                               Array.from(newIds).some(id => !knownAlarmIds.has(id));
-
-            let isNewAlarmTriggered = false;
-            alarms.forEach(a => {
-                if (!knownAlarmIds.has(a.id)) {
-                    knownAlarmIds.add(a.id);
-                    isNewAlarmTriggered = true;
+                if (!alarms || alarms.length === 0) {
+                    idleEl.style.display = 'block';
+                    gridEl.innerHTML = '';
+                    knownAlarmIds = {};
+                    currentAlarms = [];
+                    return;
                 }
-            });
 
-            if (isNewAlarmTriggered) {
-                const audio = document.getElementById('gong');
-                audio.currentTime = 0;
-                audio.play().catch(() => {});
-            }
+                idleEl.style.display = 'none';
 
-            if (idsChanged) {
+                var newIdsObj = {};
+                var isNewAlarmTriggered = false;
+                for (var i = 0; i < alarms.length; i++) {
+                    var a = alarms[i];
+                    newIdsObj[a.id] = true;
+                    if (!knownAlarmIds[a.id]) {
+                        knownAlarmIds[a.id] = true;
+                        isNewAlarmTriggered = true;
+                    }
+                }
+
+                if (isNewAlarmTriggered) {
+                    var audio = document.getElementById('gong');
+                    audio.currentTime = 0;
+                    audio.play().catch(function(e) {});
+                }
+
                 currentAlarms = alarms;
-                const now = Math.floor(Date.now() / 1000);
+                var now = Math.floor(Date.now() / 1000);
+                var htmlContent = '';
 
-                gridEl.innerHTML = alarms.map(a => {
-                    const diff = Math.max(0, Math.floor(now - a.timestamp));
-                    const mins = String(Math.floor(diff / 60)).padStart(2, '0');
-                    const secs = String(diff % 60).padStart(2, '0');
+                for (var j = 0; j < alarms.length; j++) {
+                    var a = alarms[j];
+                    var diff = Math.max(0, Math.floor(now - a.timestamp));
+                    var mins = String(Math.floor(diff / 60)).padStart(2, '0');
+                    var secs = String(diff % 60).padStart(2, '0');
+                    var flashClass = isNewAlarmTriggered ? 'flashing' : '';
 
-                    return `
-                        <div class="alarm-card ${isNewAlarmTriggered ? 'flashing' : ''}">
-                            <div class="stichwort">${escapeHtml(a.stichwort)}</div>
-                            <div class="details">
-                                <p><span class="label">Ort:</span> ${escapeHtml(a.adresse)}</p>
-                                <p><span class="label">Einheiten:</span> ${escapeHtml(a.fahrzeuge)}</p>
-                                <p><span class="label">Hinweis:</span> ${escapeHtml(a.hinweis) || '-'}</p>
-                            </div>
-                            <div class="timer-box">
-                                Alarmzeit: ${escapeHtml(a.timestr)} | Laufzeit: <span id="timer-${a.id}">${mins}:${secs}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-        } catch (e) {
-            document.getElementById('offlineBanner').style.display = 'block';
-        }
+                    htmlContent += '<div class="alarm-card ' + flashClass + '">' +
+                        '<div class="stichwort">' + escapeHtml(a.stichwort) + '</div>' +
+                        '<div class="details">' +
+                            '<p><span class="label">Ort:</span> ' + escapeHtml(a.adresse) + '</p>' +
+                            '<p><span class="label">Einheiten:</span> ' + escapeHtml(a.fahrzeuge) + '</p>' +
+                            '<p><span class="label">Hinweis:</span> ' + (escapeHtml(a.hinweis) || '-') + '</p>' +
+                        '</div>' +
+                        '<div class="timer-box">' +
+                            'Alarmzeit: ' + escapeHtml(a.timestr) + ' | Laufzeit: <span id="timer-' + a.id + '">' + mins + ':' + secs + '</span>' +
+                        '</div>' +
+                    '</div>';
+                }
+                gridEl.innerHTML = htmlContent;
+            })
+            .catch(function(err) {
+                document.getElementById('offlineBanner').style.display = 'block';
+            });
     }
 
     setInterval(poll, 1000);
