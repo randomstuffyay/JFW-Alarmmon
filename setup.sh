@@ -50,7 +50,7 @@ if [ -f "$INSTALL_DIR/settings.json" ] || [ -f "$INSTALL_DIR/alarms.json" ]; the
     fi
 fi
 
-echo "[5/6] Generiere Standard-Alarmton und richte Sound-Generator ein..."
+echo "[5/6] Generiere Standard-Alarmton und bereite Sound-Skripte vor..."
 if [ ! -f "$INSTALL_DIR/static/gong.mp3" ]; then
     ffmpeg -y -f lavfi -i "sine=frequency=880:duration=0.4,afade=t=out:st=0.2:d=0.2" \
     -f lavfi -i "sine=frequency=660:duration=0.8,afade=t=out:st=0.4:d=0.4" \
@@ -58,8 +58,9 @@ if [ ! -f "$INSTALL_DIR/static/gong.mp3" ]; then
     "$INSTALL_DIR/static/gong.mp3" > /dev/null 2>&1
 fi
 
-# Sound-Generator bereitstellen und ausführbar machen (wird manuell ausgeführt)
+# Sound-Skripte ausführbar machen
 chmod +x "$INSTALL_DIR/generate_sounds.py" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/generate_sounds.sh" 2>/dev/null || true
 
 echo "[6/6] Richte systemd-Service und Kiosk-Autostart ein..."
 cat <<SERVICEEOF | sudo tee /etc/systemd/system/alarmmonitor.service > /dev/null
@@ -88,5 +89,5 @@ bash "$INSTALL_DIR/create_shortcuts.sh"
 chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR"
 
 echo "Installation vollständig abgeschlossen!"
-echo "Hinweis: Das Skript zur Sound-Erstellung liegt bereit unter:"
-echo "  python3 ~/JFW-Alarmmon/generate_sounds.py"
+echo "Hinweis: Du kannst die Sounds jederzeit manuell generieren mit:"
+echo "  ./generate_sounds.sh"
