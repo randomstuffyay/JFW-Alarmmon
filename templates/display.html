@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <title>Alarmmonitor</title>
     <style>
-        body { background: #111; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; }
-        .idle-container { text-align: center; margin-top: 15vh; color: #444; }
+        body { background: #111; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* Layout Hauptbereich */
+        .main-content { flex: 1; }
+        
+        .idle-container { text-align: center; margin-top: 10vh; color: #444; }
         .idle-title { font-size: 3.5em; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; color: #2ecc71; }
         .idle-clock { font-size: 6em; font-weight: bold; color: #888; font-family: monospace; }
         .audio-hint { margin-top: 25px; font-size: 1.1em; color: #e67e22; cursor: pointer; display: inline-block; padding: 8px 15px; border: 1px dashed #e67e22; border-radius: 6px; }
@@ -16,6 +20,16 @@
         .details { font-size: 1.7em; margin-top: 15px; line-height: 1.5; flex-grow: 1; }
         .label { color: #f39c12; font-weight: bold; display: inline-block; width: 140px; }
         .timer-box { margin-top: 15px; font-size: 1.3em; color: #2ecc71; text-align: right; border-top: 1px solid #333; padding-top: 10px; }
+
+        /* Dauerhaftes Kurzprotokoll unten */
+        .history-panel { margin-top: 30px; background: #181818; border: 2px solid #333; border-radius: 8px; padding: 15px 20px; }
+        .history-title { font-size: 1.2em; font-weight: bold; color: #f39c12; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .history-list { list-style: none; padding: 0; margin: 0; max-height: 150px; overflow-y: auto; font-size: 1.1em; }
+        .history-item { padding: 6px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
+        .history-item:last-child { border-bottom: none; }
+        .history-time { color: #2ecc71; font-family: monospace; font-weight: bold; margin-right: 15px; }
+        .history-text { flex-grow: 1; color: #ccc; }
+        .history-empty { color: #666; font-style: italic; }
 
         .offline-banner { display: none; position: fixed; top: 0; left: 0; right: 0; background: #e67e22; color: #fff; text-align: center; padding: 10px; font-weight: bold; font-size: 1.2em; z-index: 9999; }
 
@@ -31,13 +45,23 @@
 
 <div id="offlineBanner" class="offline-banner">VERBINDUNG ZUM SERVER UNTERBROCHEN</div>
 
-<div id="idle" class="idle-container">
-    <div class="idle-title">EINSATZBEREIT</div>
-    <div id="clock" class="idle-clock">00:00:00</div>
-    <div id="audioHint" class="audio-hint" onclick="unlockAudio()">🔔 Bildschirmoberfläche anklicken um Alarmton freizuschalten</div>
+<div class="main-content">
+    <div id="idle" class="idle-container">
+        <div class="idle-title">EINSATZBEREIT</div>
+        <div id="clock" class="idle-clock">00:00:00</div>
+        <div id="audioHint" class="audio-hint" onclick="unlockAudio()">🔔 Bildschirmoberfläche anklicken um Alarmton freizuschalten</div>
+    </div>
+
+    <div id="grid" class="alarm-grid"></div>
 </div>
 
-<div id="grid" class="alarm-grid"></div>
+<!-- Permanentes Kurzprotokoll -->
+<div class="history-panel">
+    <div class="history-title">📋 Einsatzprotokoll (Heutige Einsätze)</div>
+    <div id="displayHistory">
+        <div class="history-empty">Noch keine Einsätze im Protokoll</div>
+    </div>
+</div>
 
 <audio id="gong" preload="auto" onerror="handleAudioError()"></audio>
 
@@ -83,7 +107,8 @@
         var hrs = String(now.getHours()).padStart(2, '0');
         var mins = String(now.getMinutes()).padStart(2, '0');
         var secs = String(now.getSeconds()).padStart(2, '0');
-        document.getElementById('clock').innerText = hrs + ':' + mins + ':' + secs;
+        var clockEl = document.getElementById('clock');
+        if (clockEl) clockEl.innerText = hrs + ':' + mins + ':' + secs;
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -123,6 +148,31 @@
             });
     }
 
+    function loadDisplayHistory() {
+        fetch('/api/history')
+            .then(function(res) { return res.json(); })
+            .then(function(history) {
+                var container = document.getElementById('displayHistory');
+                if (!history || history.length === 0) {
+                    container.innerHTML = '<div class="history-empty">Noch keine Einsätze im Protokoll</div>';
+                    return;
+                }
+                
+                var html = '<ul class="history-list">';
+                for (var i = 0; i < history.length; i++) {
+                    var h = history[i];
+                    html += '<li class="history-item">' +
+                        '<div><span class="history-time">' + escapeHtml(h.timestr) + '</span>' +
+                        '<b>' + escapeHtml(h.stichwort) + '</b></div>' +
+                        '<div class="history-text" style="text-align: right; color: #888;">' + escapeHtml(h.adresse) + ' (' + escapeHtml(h.fahrzeuge) + ')</div>' +
+                    '</li>';
+                }
+                html += '</ul>';
+                container.innerHTML = html;
+            })
+            .catch(function(e) {});
+    }
+
     function poll() {
         fetch('/api/alarm')
             .then(function(res) {
@@ -140,6 +190,7 @@
                     gridEl.innerHTML = '';
                     knownAlarmIds = {};
                     currentAlarms = [];
+                    loadDisplayHistory();
                     return;
                 }
 
@@ -184,6 +235,7 @@
                     '</div>';
                 }
                 gridEl.innerHTML = htmlContent;
+                loadDisplayHistory();
             })
             .catch(function(err) {
                 document.getElementById('offlineBanner').style.display = 'block';
@@ -191,6 +243,7 @@
     }
 
     setInterval(poll, 1000);
+    loadDisplayHistory();
 </script>
 </body>
 </html>
