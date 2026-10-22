@@ -39,7 +39,7 @@
 
 <div id="grid" class="alarm-grid"></div>
 
-<audio id="gong" src="/static/gong.mp3" preload="auto"></audio>
+<audio id="gong" preload="auto"></audio>
 
 <script>
     var knownAlarmIds = {};
@@ -94,6 +94,19 @@
     }
     setInterval(updateTimers, 1000);
 
+    function playAlarmSound() {
+        fetch('/api/settings')
+            .then(function(res) { return res.json(); })
+            .then(function(settings) {
+                var soundFile = settings.selected_sound || 'gong.mp3';
+                var audio = document.getElementById('gong');
+                audio.src = '/static/' + soundFile;
+                audio.currentTime = 0;
+                audio.play().catch(function(e) {});
+            })
+            .catch(function(err) {});
+    }
+
     function poll() {
         fetch('/api/alarm')
             .then(function(res) {
@@ -128,9 +141,7 @@
                 }
 
                 if (isNewAlarmTriggered) {
-                    var audio = document.getElementById('gong');
-                    audio.currentTime = 0;
-                    audio.play().catch(function(e) {});
+                    playAlarmSound();
                 }
 
                 currentAlarms = alarms;

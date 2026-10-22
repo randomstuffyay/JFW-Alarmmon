@@ -27,6 +27,7 @@
         .toast { display: none; background: #2ecc71; color: white; text-align: center; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-weight: bold; }
         ul { padding-left: 20px; margin: 0; font-size: 14px; color: #555; }
         .clear { clear: both; }
+        .sound-box { display: flex; gap: 8px; align-items: center; }
     </style>
 </head>
 <body>
@@ -38,6 +39,7 @@
     <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ Stammdaten & Presets</button>
 </div>
 
+<!-- TAB 1: ALARMIERUNG -->
 <div id="tab-alarm" class="tab-content active">
     <div class="section">
         <h2>Aktive Einsätze</h2>
@@ -77,7 +79,23 @@
     </div>
 </div>
 
+<!-- TAB 2: EINSTELLUNGEN -->
 <div id="tab-settings" class="tab-content">
+    
+    <!-- Sound-Einstellungen -->
+    <div class="section">
+        <h2>🔊 Alarmgong / Soundausgabe</h2>
+        <label><b>Standard-Alarmton wählen (aus Ordner static/):</b></label>
+        <div class="sound-box">
+            <select id="soundSelect" onchange="updateSelectedSound()" style="flex: 1; margin:0;">
+                <option value="">Lädt Audiodateien...</option>
+            </select>
+            <button onclick="previewSound()" style="width: auto; background: #3498db; margin:0;">▶ Probe hören</button>
+        </div>
+        <audio id="audioPreview"></audio>
+    </div>
+
+    <!-- Presets Verwalten -->
     <div class="section">
         <h2>Presets (Einsatzvoreinstellungen)</h2>
         <div id="presetsList"></div>
@@ -93,6 +111,7 @@
         <div class="clear"></div>
     </div>
 
+    <!-- Fahrzeuge Verwalten -->
     <div class="section">
         <h2>Verfügbare Fahrzeuge</h2>
         <div id="fahrzeugeList"></div>
@@ -104,6 +123,7 @@
         <div class="clear"></div>
     </div>
 
+    <!-- Stichwörter Verwalten -->
     <div class="section">
         <h2>Alarmstichwörter</h2>
         <div id="stichwoerterList"></div>
@@ -115,6 +135,7 @@
         <div class="clear"></div>
     </div>
 
+    <!-- Einsatzorte Verwalten -->
     <div class="section">
         <h2>Einsatzorte / Ziele</h2>
         <div id="zieleList"></div>
@@ -130,8 +151,9 @@
 </div>
 
 <script>
-    let settingsData = { fahrzeuge: [], stichwoerter: [], ziele: [], presets: [] };
+    let settingsData = { selected_sound: "gong.mp3", fahrzeuge: [], stichwoerter: [], ziele: [], presets: [] };
     let selectedVehicles = new Set();
+    let audioFilesList = [];
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -155,12 +177,55 @@
         setTimeout(function() { toast.style.display = 'none'; }, 3000);
     }
 
+    async function loadAudioFiles() {
+        try {
+            var res = await fetch('/api/audio-files');
+            audioFilesList = await res.json();
+            renderSoundDropdown();
+        } catch(e) {}
+    }
+
+    function renderSoundDropdown() {
+        var select = document.getElementById('soundSelect');
+        if (!audioFilesList || audioFilesList.length === 0) {
+            select.innerHTML = '<option value="">Keine Audio-Dateien im Ordner static/ gefunden</option>';
+            return;
+        }
+
+        var currentSelected = settingsData.selected_sound || 'gong.mp3';
+        select.innerHTML = audioFilesList.map(function(f) {
+            var selectedAttr = (f === currentSelected) ? 'selected' : '';
+            return '<option value="' + escapeHtml(f) + '" ' + selectedAttr + '>' + escapeHtml(f) + '</option>';
+        }).join('');
+    }
+
+    function updateSelectedSound() {
+        var val = document.getElementById('soundSelect').value;
+        if (val) {
+            settingsData.selected_sound = val;
+            saveSettingsData();
+        }
+    }
+
+    function previewSound() {
+        var val = document.getElementById('soundSelect').value;
+        if (val) {
+            var player = document.getElementById('audioPreview');
+            player.src = '/static/' + val;
+            player.currentTime = 0;
+            player.play().catch(function(e) {
+                alert("Wiedergabe nicht möglich: " + e.message);
+            });
+        }
+    }
+
     async function loadSettings() {
         try {
             var res = await fetch('/api/settings');
             settingsData = await res.json();
             renderSettingsUI();
             renderAlarmFormChips();
+            loadAudioFiles();
         } catch(e) {}
     }
 
@@ -326,6 +391,8 @@
     }
 
     function renderSettingsUI() {
+        renderSoundDropdown();
+
         document.getElementById('presetsList').innerHTML = settingsData.presets.map(function(p, idx) {
             return '<div class="list-item">' +
                 '<div><b>' + escapeHtml(p.name) + '</b>: ' + escapeHtml(p.stichwort) + ' | ' + escapeHtml(p.adresse) + ' | ' + escapeHtml(p.fahrzeuge) + '</div>' +

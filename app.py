@@ -8,12 +8,15 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 
 AUTO_RESET_MINUTES = 30
-DATA_FILE = os.path.join(os.path.dirname(__file__), 'alarms.json')
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
+BASE_DIR = os.path.dirname(__file__)
+DATA_FILE = os.path.join(BASE_DIR, 'alarms.json')
+SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 file_lock = threading.Lock()
 
 DEFAULT_SETTINGS = {
+    "selected_sound": "gong.mp3",
     "fahrzeuge": ["LF 10", "MTW", "TLF 3000", "ELW 1", "DLK 23/12"],
     "stichwoerter": ["B1 - Containerbrand", "B2 - Gebäudebrand", "THL1 - Ölspur", "THL2 - VU Person klemmt", "BMA - Auslösung"],
     "ziele": ["Übungsplatz Hof", "Hauptstraße / Parkplatz", "Musterfirma, Hallenstr. 4", "Musterweg 12", "Gerätehaus"],
@@ -47,7 +50,10 @@ def load_settings():
         if os.path.exists(SETTINGS_FILE):
             try:
                 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if "selected_sound" not in data:
+                        data["selected_sound"] = "gong.mp3"
+                    return data
             except Exception as e:
                 print(f"Fehler beim Laden der Settings-Datei: {e}")
         return DEFAULT_SETTINGS.copy()
@@ -68,6 +74,7 @@ def display():
 def admin():
     return render_template('admin.html')
 
+# === API ALARME ===
 @app.route('/api/alarm', methods=['GET', 'POST'])
 def handle_alarm():
     data_store = load_data()
@@ -127,6 +134,7 @@ def handle_history():
         
     return jsonify(data_store.get("alarm_history", []))
 
+# === API EINSTELLUNGEN & AUDIO-SCAN ===
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
     if request.method == 'POST':
@@ -142,12 +150,22 @@ def reset_settings():
     current_settings = load_settings()
     
     if category in DEFAULT_SETTINGS:
-        current_settings[category] = DEFAULT_SETTINGS[category].copy()
+        current_settings[category] = DEFAULT_SETTINGS[category].copy() if isinstance(DEFAULT_SETTINGS[category], list) else DEFAULT_SETTINGS[category]
     elif category == 'all':
         current_settings = DEFAULT_SETTINGS.copy()
         
     save_settings(current_settings)
     return jsonify({"status": "reset", "settings": current_settings})
+
+@app.route('/api/audio-files', methods=['GET'])
+def list_audio_files():
+    files = []
+    if os.path.exists(STATIC_DIR):
+        for f in os.listdir(STATIC_DIR):
+            if f.lower().endswith(('.mp3', '.wav', '.ogg')):
+                files.append(f)
+    files.sort()
+    return jsonify(files)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
