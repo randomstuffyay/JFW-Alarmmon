@@ -5,7 +5,6 @@ REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(eval echo "~$REAL_USER")
 INSTALL_DIR="$REAL_HOME/JFW-Alarmmon"
 
-# Parameter-Parsing (--keep-config oder --overwrite-config)
 OVERWRITE_CONFIG=false
 KEEP_CONFIG=false
 
@@ -35,30 +34,32 @@ mkdir -p "$REAL_HOME/.config/autostart"
 echo "[4/6] Überprüfe Konfigurationsdateien (settings.json / alarms.json)..."
 if [ -f "$INSTALL_DIR/settings.json" ] || [ -f "$INSTALL_DIR/alarms.json" ]; then
     if [ "$KEEP_CONFIG" = true ]; then
-        echo " -> Bestehende Konfigurationsdateien werden durch Parameter --keep-config geschützt."
+        echo " -> Bestehende Konfigurationsdateien werden geschützt (--keep-config)."
     elif [ "$OVERWRITE_CONFIG" = true ]; then
-        echo " -> Bestehende Konfigurationsdateien werden durch Parameter --overwrite-config überschrieben."
+        echo " -> Konfigurationsdateien werden überschrieben (--overwrite-config)."
         rm -f "$INSTALL_DIR/settings.json" "$INSTALL_DIR/alarms.json"
     else
         echo
-        read -p "Es existieren bereits Konfigurationsdateien (settings.json / alarms.json). Möchtest du diese überschreiben? (j/N): " -n 1 -r
+        read -p "Es existieren bereits Konfigurationsdateien. Überschreiben? (j/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Jj]$ ]]; then
             rm -f "$INSTALL_DIR/settings.json" "$INSTALL_DIR/alarms.json"
-            echo " -> Bestehende Konfigurationen wurden gelöscht und werden neu erstellt."
         else
-            echo " -> Bestehende Konfigurationsdateien werden beibehalten."
+            echo " -> Bestehende Konfigurationen werden beibehalten."
         fi
     fi
 fi
 
-echo "[5/6] Generiere Standard-Alarmton..."
+echo "[5/6] Generiere Standard-Alarmton und richte Sound-Generator ein..."
 if [ ! -f "$INSTALL_DIR/static/gong.mp3" ]; then
     ffmpeg -y -f lavfi -i "sine=frequency=880:duration=0.4,afade=t=out:st=0.2:d=0.2" \
     -f lavfi -i "sine=frequency=660:duration=0.8,afade=t=out:st=0.4:d=0.4" \
     -filter_complex "[0:a][1:a]concat=n=2:v=0:a=1" \
     "$INSTALL_DIR/static/gong.mp3" > /dev/null 2>&1
 fi
+
+# Sound-Generator bereitstellen und ausführbar machen (wird manuell ausgeführt)
+chmod +x "$INSTALL_DIR/generate_sounds.py" 2>/dev/null || true
 
 echo "[6/6] Richte systemd-Service und Kiosk-Autostart ein..."
 cat <<SERVICEEOF | sudo tee /etc/systemd/system/alarmmonitor.service > /dev/null
@@ -86,4 +87,6 @@ bash "$INSTALL_DIR/create_shortcuts.sh"
 
 chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR"
 
-echo "Installation von JFW-Alarmmon vollständig abgeschlossen!"
+echo "Installation vollständig abgeschlossen!"
+echo "Hinweis: Das Skript zur Sound-Erstellung liegt bereit unter:"
+echo "  python3 ~/JFW-Alarmmon/generate_sounds.py"
