@@ -16,6 +16,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 file_lock = threading.Lock()
 
 DEFAULT_SETTINGS = {
+    "title_text": "JUGENDFEUERWEHR ALARMMONITOR",
     "selected_sound": "gong.mp3",
     "fahrzeuge": ["LF 10", "MTW", "TLF 3000", "ELW 1", "DLK 23/12"],
     "stichwoerter": ["B1 - Containerbrand", "B2 - Gebäudebrand", "THL1 - Ölspur", "THL2 - VU Person klemmt", "BMA - Auslösung"],
@@ -53,6 +54,8 @@ def load_settings():
                     data = json.load(f)
                     if "selected_sound" not in data:
                         data["selected_sound"] = "gong.mp3"
+                    if "title_text" not in data:
+                        data["title_text"] = "JUGENDFEUERWEHR ALARMMONITOR"
                     return data
             except Exception as e:
                 print(f"Fehler beim Laden der Settings-Datei: {e}")

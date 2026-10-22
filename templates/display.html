@@ -6,10 +6,14 @@
     <style>
         body { background: #111; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; }
         
+        /* Permanente Titelzeile */
+        .app-header { background: #1f242d; border-bottom: 3px solid #e74c3c; padding: 12px 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .app-header-title { font-size: 2.2em; font-weight: bold; letter-spacing: 2px; color: #ffffff; text-transform: uppercase; margin: 0; }
+
         /* Layout Hauptbereich */
         .main-content { flex: 1; }
         
-        .idle-container { text-align: center; margin-top: 10vh; color: #444; }
+        .idle-container { text-align: center; margin-top: 6vh; color: #444; }
         .idle-title { font-size: 3.5em; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; color: #2ecc71; }
         .idle-clock { font-size: 6em; font-weight: bold; color: #888; font-family: monospace; }
         .audio-hint { margin-top: 25px; font-size: 1.1em; color: #e67e22; cursor: pointer; display: inline-block; padding: 8px 15px; border: 1px dashed #e67e22; border-radius: 6px; }
@@ -45,6 +49,11 @@
 
 <div id="offlineBanner" class="offline-banner">VERBINDUNG ZUM SERVER UNTERBROCHEN</div>
 
+<!-- PERMANENTE TITELZEILE -->
+<div class="app-header">
+    <h1 id="headerTitle" class="app-header-title">JUGENDFEUERWEHR ALARMMONITOR</h1>
+</div>
+
 <div class="main-content">
     <div id="idle" class="idle-container">
         <div class="idle-title">EINSATZBEREIT</div>
@@ -55,7 +64,7 @@
     <div id="grid" class="alarm-grid"></div>
 </div>
 
-<!-- Permanentes Kurzprotokoll -->
+<!-- Dauerhaftes Kurzprotokoll -->
 <div class="history-panel">
     <div class="history-title">📋 Einsatzprotokoll (Heutige Einsätze)</div>
     <div id="displayHistory">
@@ -128,10 +137,18 @@
     }
     setInterval(updateTimers, 1000);
 
+    function updateTitleText(titleText) {
+        var titleEl = document.getElementById('headerTitle');
+        if (titleEl && titleText) {
+            titleEl.innerText = titleText;
+        }
+    }
+
     function playAlarmSound() {
         fetch('/api/settings')
             .then(function(res) { return res.json(); })
             .then(function(settings) {
+                if (settings.title_text) updateTitleText(settings.title_text);
                 var soundFile = settings.selected_sound || 'gong.mp3';
                 var audio = document.getElementById('gong');
                 audio.src = '/static/' + soundFile;
@@ -173,6 +190,15 @@
             .catch(function(e) {});
     }
 
+    function loadSettingsTitle() {
+        fetch('/api/settings')
+            .then(function(res) { return res.json(); })
+            .then(function(settings) {
+                if (settings.title_text) updateTitleText(settings.title_text);
+            })
+            .catch(function(e) {});
+    }
+
     function poll() {
         fetch('/api/alarm')
             .then(function(res) {
@@ -191,6 +217,7 @@
                     knownAlarmIds = {};
                     currentAlarms = [];
                     loadDisplayHistory();
+                    loadSettingsTitle();
                     return;
                 }
 
@@ -236,6 +263,7 @@
                 }
                 gridEl.innerHTML = htmlContent;
                 loadDisplayHistory();
+                loadSettingsTitle();
             })
             .catch(function(err) {
                 document.getElementById('offlineBanner').style.display = 'block';
@@ -244,6 +272,7 @@
 
     setInterval(poll, 1000);
     loadDisplayHistory();
+    loadSettingsTitle();
 </script>
 </body>
 </html>
