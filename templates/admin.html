@@ -39,7 +39,6 @@
     <button class="tab-btn" onclick="switchTab('tab-settings')">⚙️ Stammdaten & Presets</button>
 </div>
 
-<!-- TAB 1: ALARMIERUNG -->
 <div id="tab-alarm" class="tab-content active">
     <div class="section">
         <h2>Aktive Einsätze</h2>
@@ -79,10 +78,8 @@
     </div>
 </div>
 
-<!-- TAB 2: EINSTELLUNGEN -->
 <div id="tab-settings" class="tab-content">
     
-    <!-- Sound-Einstellungen -->
     <div class="section">
         <h2>🔊 Alarmgong / Soundausgabe</h2>
         <label><b>Standard-Alarmton wählen (aus Ordner static/):</b></label>
@@ -95,7 +92,6 @@
         <audio id="audioPreview"></audio>
     </div>
 
-    <!-- Presets Verwalten -->
     <div class="section">
         <h2>Presets (Einsatzvoreinstellungen)</h2>
         <div id="presetsList"></div>
@@ -111,7 +107,6 @@
         <div class="clear"></div>
     </div>
 
-    <!-- Fahrzeuge Verwalten -->
     <div class="section">
         <h2>Verfügbare Fahrzeuge</h2>
         <div id="fahrzeugeList"></div>
@@ -123,7 +118,6 @@
         <div class="clear"></div>
     </div>
 
-    <!-- Stichwörter Verwalten -->
     <div class="section">
         <h2>Alarmstichwörter</h2>
         <div id="stichwoerterList"></div>
@@ -135,7 +129,6 @@
         <div class="clear"></div>
     </div>
 
-    <!-- Einsatzorte Verwalten -->
     <div class="section">
         <h2>Einsatzorte / Ziele</h2>
         <div id="zieleList"></div>
@@ -446,6 +439,7 @@
         document.getElementById('newPresetHinweis').value = '';
 
         saveSettingsData();
+        showToast("Preset erfolgreich gespeichert!");
     }
 
     function deletePreset(idx) {

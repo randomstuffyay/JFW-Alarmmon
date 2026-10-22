@@ -74,7 +74,6 @@ def display():
 def admin():
     return render_template('admin.html')
 
-# === API ALARME ===
 @app.route('/api/alarm', methods=['GET', 'POST'])
 def handle_alarm():
     data_store = load_data()
@@ -134,7 +133,6 @@ def handle_history():
         
     return jsonify(data_store.get("alarm_history", []))
 
-# === API EINSTELLUNGEN & AUDIO-SCAN ===
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
     if request.method == 'POST':
@@ -160,10 +158,10 @@ def reset_settings():
 @app.route('/api/audio-files', methods=['GET'])
 def list_audio_files():
     files = []
-    if os.path.exists(STATIC_DIR):
-        for f in os.listdir(STATIC_DIR):
-            if f.lower().endswith(('.mp3', '.wav', '.ogg')):
-                files.append(f)
+    os.makedirs(STATIC_DIR, exist_ok=True)
+    for f in os.listdir(STATIC_DIR):
+        if f.lower().endswith(('.mp3', '.wav', '.ogg')):
+            files.append(f)
     files.sort()
     return jsonify(files)
 

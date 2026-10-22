@@ -39,7 +39,7 @@
 
 <div id="grid" class="alarm-grid"></div>
 
-<audio id="gong" preload="auto"></audio>
+<audio id="gong" preload="auto" onerror="handleAudioError()"></audio>
 
 <script>
     var knownAlarmIds = {};
@@ -49,6 +49,7 @@
     function unlockAudio() {
         if (!audioUnlocked) {
             var audio = document.getElementById('gong');
+            audio.src = '/static/gong.mp3';
             audio.play().then(function() {
                 audio.pause();
                 audio.currentTime = 0;
@@ -56,6 +57,14 @@
                 var hint = document.getElementById('audioHint');
                 if (hint) hint.style.display = 'none';
             }).catch(function(e) {});
+        }
+    }
+
+    function handleAudioError() {
+        var audio = document.getElementById('gong');
+        if (audio.src.indexOf('gong.mp3') === -1) {
+            audio.src = '/static/gong.mp3';
+            audio.play().catch(function(e) {});
         }
     }
 
@@ -102,9 +111,16 @@
                 var audio = document.getElementById('gong');
                 audio.src = '/static/' + soundFile;
                 audio.currentTime = 0;
-                audio.play().catch(function(e) {});
+                audio.play().catch(function(e) {
+                    audio.src = '/static/gong.mp3';
+                    audio.play().catch(function(err) {});
+                });
             })
-            .catch(function(err) {});
+            .catch(function(err) {
+                var audio = document.getElementById('gong');
+                audio.src = '/static/gong.mp3';
+                audio.play().catch(function(e) {});
+            });
     }
 
     function poll() {
