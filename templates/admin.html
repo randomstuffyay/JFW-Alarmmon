@@ -28,6 +28,9 @@
         ul { padding-left: 20px; margin: 0; font-size: 14px; color: #555; }
         .clear { clear: both; }
         .sound-box { display: flex; gap: 8px; align-items: center; }
+        .input-combo { display: flex; gap: 6px; margin: 6px 0; align-items: center; }
+        .input-combo select { width: 40%; margin: 0; background: #fafafa; }
+        .input-combo input { width: 60%; margin: 0; }
     </style>
 </head>
 <body>
@@ -112,11 +115,33 @@
         <hr>
         <h3>Neues Preset anlegen</h3>
         <input type="text" id="newPresetName" placeholder="Name des Presets (z. B. Containerbrand)">
-        <input type="text" id="newPresetStichwort" placeholder="Stichwort">
-        <input type="text" id="newPresetAdresse" placeholder="Einsatzort">
-        <input type="text" id="newPresetFahrzeuge" placeholder="Fahrzeuge">
+        
+        <label style="margin-top:8px; display:block;"><b>Stichwort (Freitext oder aus Vorlage):</b></label>
+        <div class="input-combo">
+            <select id="presetStichwortSelect" onchange="document.getElementById('newPresetStichwort').value = this.value;">
+                <option value="">-- Stichwort wählen --</option>
+            </select>
+            <input type="text" id="newPresetStichwort" placeholder="Stichwort eingeben">
+        </div>
+
+        <label style="margin-top:8px; display:block;"><b>Einsatzort (Freitext oder aus Vorlage):</b></label>
+        <div class="input-combo">
+            <select id="presetZielSelect" onchange="document.getElementById('newPresetAdresse').value = this.value;">
+                <option value="">-- Ort wählen --</option>
+            </select>
+            <input type="text" id="newPresetAdresse" placeholder="Einsatzort eingeben">
+        </div>
+
+        <label style="margin-top:8px; display:block;"><b>Fahrzeuge (Freitext oder aus Vorlage):</b></label>
+        <div class="input-combo">
+            <select id="presetFahrzeugSelect" onchange="appendPresetFahrzeug(this.value)">
+                <option value="">-- Fahrzeug hinzufügen --</option>
+            </select>
+            <input type="text" id="newPresetFahrzeuge" placeholder="Fahrzeuge (z. B. LF 10, MTW)">
+        </div>
+
         <input type="text" id="newPresetHinweis" placeholder="Hinweis (optional)">
-        <button onclick="addPreset()" style="background:#27ae60;">Preset Speichern</button>
+        <button onclick="addPreset()" style="background:#27ae60; margin-top:10px;">Preset Speichern</button>
         <button class="btn-reset" onclick="resetCategory('presets')">Presets zurücksetzen</button>
         <div class="clear"></div>
     </div>
@@ -245,6 +270,7 @@
             document.getElementById('titleTextInput').value = settingsData.title_text || "JUGENDFEUERWEHR ALARMMONITOR";
             renderSettingsUI();
             renderAlarmFormChips();
+            renderPresetDropdowns();
             loadAudioFiles();
         } catch(e) {}
     }
@@ -267,6 +293,38 @@
             });
             loadSettings();
         }
+    }
+
+    function renderPresetDropdowns() {
+        var sSelect = document.getElementById('presetStichwortSelect');
+        sSelect.innerHTML = '<option value="">-- Stichwort wählen --</option>' +
+            settingsData.stichwoerter.map(function(s) {
+                return '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>';
+            }).join('');
+
+        var zSelect = document.getElementById('presetZielSelect');
+        zSelect.innerHTML = '<option value="">-- Ort wählen --</option>' +
+            settingsData.ziele.map(function(z) {
+                return '<option value="' + escapeHtml(z) + '">' + escapeHtml(z) + '</option>';
+            }).join('');
+
+        var fSelect = document.getElementById('presetFahrzeugSelect');
+        fSelect.innerHTML = '<option value="">-- Fahrzeug hinzufügen --</option>' +
+            settingsData.fahrzeuge.map(function(f) {
+                return '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>';
+            }).join('');
+    }
+
+    function appendPresetFahrzeug(fVal) {
+        if (!fVal) return;
+        var input = document.getElementById('newPresetFahrzeuge');
+        var current = input.value.trim();
+        if (current) {
+            input.value = current + ', ' + fVal;
+        } else {
+            input.value = fVal;
+        }
+        document.getElementById('presetFahrzeugSelect').value = "";
     }
 
     function renderAlarmFormChips() {
@@ -412,6 +470,7 @@
 
     function renderSettingsUI() {
         renderSoundDropdown();
+        renderPresetDropdowns();
 
         document.getElementById('presetsList').innerHTML = settingsData.presets.map(function(p, idx) {
             return '<div class="list-item">' +
@@ -464,6 +523,9 @@
         document.getElementById('newPresetAdresse').value = '';
         document.getElementById('newPresetFahrzeuge').value = '';
         document.getElementById('newPresetHinweis').value = '';
+        document.getElementById('presetStichwortSelect').value = '';
+        document.getElementById('presetZielSelect').value = '';
+        document.getElementById('presetFahrzeugSelect').value = '';
 
         saveSettingsData();
         showToast("Preset erfolgreich gespeichert!");
